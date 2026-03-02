@@ -1,4 +1,4 @@
--- Nexo v1.200 - GUI final con lógica integrada
+-- Nexo v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -39,6 +39,37 @@ Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
 Misc = Window:AddTab({ Title = "Misc", Icon = "component" }),
 Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
+local MobileIconGui = nil
+local isMinimized = false
+
+local function createMobileIcon()
+    if not isMobile() then return end
+    
+    MobileIconGui = Instance.new("ScreenGui")
+    MobileIconGui.Name = "NexoIconGui"
+    MobileIconGui.Parent = game.CoreGui
+    MobileIconGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    MobileIconGui.ResetOnSpawn = false
+    MobileIconGui.IgnoreGuiInset = true
+
+    local iconButton = Instance.new("TextButton")
+    iconButton.Size = UDim2.new(0, 50, 0, 50)
+    iconButton.Position = UDim2.new(1, -60, 1, -60)  -- Esquina inferior derecha
+    iconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Negro
+    iconButton.Text = "N"
+    iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Blanco
+    iconButton.TextSize = 30
+    iconButton.Font = Enum.Font.GothamBold
+    iconButton.BorderSizePixel = 0
+    iconButton.BackgroundTransparency = 0.2  -- Semi-transparente para estilo
+    iconButton.Parent = MobileIconGui
+
+    iconButton.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        Window.ScreenGui.Enabled = not isMinimized  -- Togglea la GUI (asumiendo Window.ScreenGui es la ScreenGui de Fluent)
+        -- Si Fluent tiene Minimize method: if isMinimized then Window:Minimize() else Window:Unminimize() end
+    end)
+end
 local Options = Fluent.Options
 -- ╭───────────────────────────────────────────────────────────────
 -- │                           COMBAT                              │
@@ -3015,4 +3046,5 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 end
+createMobileIcon()
 Window:SelectTab(1)
