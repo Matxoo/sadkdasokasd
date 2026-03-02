@@ -1,4 +1,4 @@
--- Nexos v1.00 - GUI final con lógica integrada
+-- Nexo v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -99,25 +99,24 @@ icon.Size = UDim2.new(0, 45, 0, 45)          -- tamaño FIJO
 icon.Position = UDim2.new(0, 15, 1, -70)
 icon.AnchorPoint = Vector2.new(0, 1)
 icon.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-Icon.BackgroundTransparency = 0.6
 icon.Text = ""
 icon.ZIndex = 12000
 icon.Parent = nexoGui  -- Dentro de la misma ScreenGui
 -- Círculo perfecto
---local cr = Instance.new("UICorner")
---cr.CornerRadius = UDim.new(1, 0)
---cr.Parent = icon
+local cr = Instance.new("UICorner")
+cr.CornerRadius = UDim.new(1, 0)
+cr.Parent = icon
 -- Borde BLANCO visible
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(255, 255, 255)
 stroke.Thickness = 3
-stroke.Transparency = 0.6
+stroke.Transparency = 0.0
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 stroke.Parent = icon
 -- Letra N en blanco
 local nLabel = Instance.new("TextLabel")
 nLabel.Size = UDim2.new(1, 0, 1, 0)
-nLabel.BackgroundTransparency = 0.6
+nLabel.BackgroundTransparency = 1
 nLabel.Text = "N"
 nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 nLabel.TextScaled = true
