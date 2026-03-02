@@ -316,14 +316,15 @@ Tabs.Combat:AddSection("Aimbot & Extras")
     Tabs.Combat:AddToggle("FOVRainbow", { Title = "Rainbow FOV", Default = false }):OnChanged(function(Value)
         rainbowFOV = Value
     end)
--- AIMBOT MÓVIL MEJORADO V2 (FOV VISIBLE + PANTALLA DERECHA) --
-───────────────────────────────────────────────────────────────
+-- ───────────────────────────────────────────────────────────────
+--     AIMBOT MÓVIL MEJORADO V2 (FOV VISIBLE + PANTALLA DERECHA)
+-- ───────────────────────────────────────────────────────────────
 -- REEMPLAZA EL BLOQUE ANTERIOR COMPLETO CON ESTE (copia y pega encima)
 
 local MobileAimbot = {}
 MobileAimbot.Enabled = false
 MobileAimbot.Connection = nil
-MobileAimbot.FOVCircle = nil -- Círculo FOV para móvil
+MobileAimbot.FOVCircle = nil  -- Círculo FOV para móvil
 
 local function isMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
@@ -334,12 +335,13 @@ local function updateMobileFOVCircle()
     if MobileAimbot.FOVCircle then
         MobileAimbot.FOVCircle:Remove()
     end
+    
     if not isMobile() then return end
     
     MobileAimbot.FOVCircle = Drawing.new("Circle")
     MobileAimbot.FOVCircle.Thickness = 2
     MobileAimbot.FOVCircle.NumSides = 100
-    MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 20          -- cambiado a 20
+    MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
     MobileAimbot.FOVCircle.Color = FOVSettings.Color or Color3.fromRGB(255, 255, 255)
     MobileAimbot.FOVCircle.Transparency = 1
     MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
@@ -350,12 +352,12 @@ local function getClosestTarget()
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         return nil
     end
-    
+
     local camera = workspace.CurrentCamera
     local cameraPos = camera.CFrame.Position
     local closest = nil
     local bestDot = -1
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
         if not player.Character then continue end
@@ -373,7 +375,6 @@ local function getClosestTarget()
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
         
         local result = workspace:Raycast(cameraPos, direction.Unit * 5000, raycastParams)
-        
         if result and result.Instance:IsDescendantOf(player.Character) then
             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
             if onScreen then
@@ -381,8 +382,8 @@ local function getClosestTarget()
                 local vectorToTarget = Vector2.new(screenPos.X, screenPos.Y) - screenCenter
                 local distance = vectorToTarget.Magnitude
                 
-                if distance <= (FOVSettings.Radius or 20) then                    -- cambiado a 20
-                    local dot = 1 - (distance / (FOVSettings.Radius or 20))      -- cambiado a 20
+                if distance <= (FOVSettings.Radius or 150) then
+                    local dot = 1 - (distance / (FOVSettings.Radius or 150))
                     if dot > bestDot then
                         bestDot = dot
                         closest = part
@@ -411,11 +412,10 @@ local function mobileAimbotLoop(deltaTime)
         end
         
         MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
-        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 20          -- cambiado a 20
+        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
     end
     
     local targetPart = getClosestTarget()
-    
     if targetPart and targetPart.Parent then
         local camera = workspace.CurrentCamera
         
@@ -438,7 +438,6 @@ local function mobileAimbotLoop(deltaTime)
         local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
         local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-        
         if pixelDist < 20 then
             camera.CFrame = targetCFrame
         end
@@ -448,7 +447,7 @@ end
 -- Iniciar / detener
 local function startMobileAimbot()
     if MobileAimbot.Connection then return end
-    updateMobileFOVCircle() -- Crear FOV al iniciar
+    updateMobileFOVCircle()  -- Crear FOV al iniciar
     MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
 end
 
@@ -465,8 +464,8 @@ end
 
 -- CONECTAR AL TOGGLE PRINCIPAL (REEMPLAZA AimToggle:OnChanged)
 AimToggle:OnChanged(function(Value)
-    AimbotSettings.Enabled = Value -- PC (Exunys)
-    MobileAimbot.Enabled = Value -- Móvil
+    AimbotSettings.Enabled = Value  -- PC (Exunys)
+    MobileAimbot.Enabled = Value    -- Móvil
     
     if Value then
         if isMobile() then
@@ -492,13 +491,13 @@ Options.FOVVisible:OnChanged(function(Value)
     FOVSettings.Visible = Value
     FOVSettings.Enabled = Value
     if isMobile() and MobileAimbot.Enabled then
-        updateMobileFOVCircle() -- Actualiza círculo móvil
+        updateMobileFOVCircle()  -- Actualiza círculo móvil
     end
 end)
 
 -- Para FOVColor Colorpicker:
 Options.FOVColor:OnChanged(function(Value)
-    if not rainbowFOV then
+    if not rainbowFOV then 
         FOVSettings.Color = Value
         if MobileAimbot.FOVCircle then
             MobileAimbot.FOVCircle.Color = Value
