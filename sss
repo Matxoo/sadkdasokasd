@@ -1,4 +1,4 @@
--- Nexo v1.00 - GUI final con lógica integrada
+-- Nexo v1.200 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -39,38 +39,75 @@ Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
 Misc = Window:AddTab({ Title = "Misc", Icon = "component" }),
 Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
+local Options = Fluent.Options
+
+local function isMobile()
+    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+end
+-- ───────────────────────────────────────────────────────────────
+--     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI (solo móviles)
+-- ───────────────────────────────────────────────────────────────
+
 local MobileIconGui = nil
 local isMinimized = false
 
 local function createMobileIcon()
-    if not isMobile() then return end
+    if not isMobile() then return end  -- Solo en móvil
+    
+    -- Evitar crear múltiples veces
+    if MobileIconGui then return end
     
     MobileIconGui = Instance.new("ScreenGui")
-    MobileIconGui.Name = "NexoIconGui"
-    MobileIconGui.Parent = game.CoreGui
+    MobileIconGui.Name = "NexoMobileIcon"
+    MobileIconGui.Parent = game:GetService("CoreGui")  -- Mejor que PlayerGui para no resetear
     MobileIconGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     MobileIconGui.ResetOnSpawn = false
     MobileIconGui.IgnoreGuiInset = true
 
     local iconButton = Instance.new("TextButton")
-    iconButton.Size = UDim2.new(0, 50, 0, 50)
-    iconButton.Position = UDim2.new(1, -60, 1, -60)  -- Esquina inferior derecha
-    iconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Negro
-    iconButton.Text = "N"
-    iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Blanco
-    iconButton.TextSize = 30
-    iconButton.Font = Enum.Font.GothamBold
+    iconButton.Size = UDim2.new(0, 60, 0, 60)          -- Tamaño un poco más grande
+    iconButton.Position = UDim2.new(1, -80, 1, -80)    -- Esquina inferior derecha
+    iconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)   -- Negro
+    iconButton.Text = "N"                               -- Letra N blanca
+    iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)   -- Blanco
+    iconButton.TextSize = 40
+    iconButton.Font = Enum.Font.GothamBlack
     iconButton.BorderSizePixel = 0
-    iconButton.BackgroundTransparency = 0.2  -- Semi-transparente para estilo
+    iconButton.BackgroundTransparency = 0.3             -- Semi-transparente
+    iconButton.TextStrokeTransparency = 0.8             -- Sombra suave
+    iconButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     iconButton.Parent = MobileIconGui
 
+    -- Corner redondeado (opcional pero queda mejor)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = iconButton
+
+    -- Click para minimizar/abrir
     iconButton.MouseButton1Click:Connect(function()
         isMinimized = not isMinimized
-        Window.ScreenGui.Enabled = not isMinimized  -- Togglea la GUI (asumiendo Window.ScreenGui es la ScreenGui de Fluent)
-        -- Si Fluent tiene Minimize method: if isMinimized then Window:Minimize() else Window:Unminimize() end
+        
+        -- Togglea la GUI principal de Fluent
+        -- Asumiendo que Fluent usa una ScreenGui con nombre "FluentGui" o similar
+        -- Si no funciona, busca el nombre real en PlayerGui o CoreGui
+        local gui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChildWhichIsA("ScreenGui", true)
+        if gui then
+            gui.Enabled = not isMinimized
+        end
+        
+        -- Alternativa si Fluent tiene método Minimize (algunas versiones sí)
+        -- Window:Minimize() / Window:Unminimize() si existe
+        
+        Fluent:Notify({
+            Title = isMinimized and "Minimizado" or "Abierto",
+            Content = isMinimized and "Toca la N para abrir" or "GUI abierta",
+            Duration = 2
+        })
     end)
 end
-local Options = Fluent.Options
+
+-- Ejecutar al inicio del script
+createMobileIcon()
 -- ╭───────────────────────────────────────────────────────────────
 -- │                           COMBAT                              │
 -- ╰───────────────────────────────────────────────────────────────
@@ -3046,5 +3083,4 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 end
-createMobileIcon()
 Window:SelectTab(1)
