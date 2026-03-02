@@ -1,4 +1,4 @@
--- Nexo2 v1.00 - GUI final con lógica integrada
+-- Nexo v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -41,122 +41,140 @@ Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 local Options = Fluent.Options
 -- ───────────────────────────────────────────────────────────────
---     ÍCONO MÓVIL MINIMIZAR/ABRIR - ESTILO VENOMHUB + LÓGICA TUYA
---     N blanca + borde blanco + tamaño FIJO 45x45 + drag + toggle Visible
+--     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI + DRAG (solo móviles)
+--     Nuevo estilo: fondo negro semitransparente, N grande, esquina inferior derecha
 -- ───────────────────────────────────────────────────────────────
+local MobileIconGui = nil
+local isMinimized = false
 
-task.spawn(function()
-    local UIS = game:GetService("UserInputService")
-    if not UIS.TouchEnabled then return end
+local function isMobile()
+    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+end
+
+local function toggleGui()
+    isMinimized = not isMinimized
     
-    task.wait(1.5)  -- Espera a que Fluent cree la GUI
-    
-    local pg = LocalPlayer:WaitForChild("PlayerGui")
-    local cg = game:GetService("CoreGui")
-    
-    -- Buscar ScreenGui con "Nexo v1.06"
-    local nexoGui = nil
-    local places = {pg, cg}
-    for _, place in ipairs(places) do
-        for _, gui in ipairs(place:GetChildren()) do
-            if gui:IsA("ScreenGui") then
-                for _, label in ipairs(gui:GetDescendants()) do
-                    if label:IsA("TextLabel") and label.Text:find("Nexo v1.06") then
-                        nexoGui = gui
-                        break
-                    end
-                end
-                if nexoGui then break end
-            end
-        end
-        if nexoGui then break end
-    end
-    
-    if not nexoGui then
-        warn("[Mobile Icon] No se encontró ScreenGui con 'Nexo v1.06'")
-        return
-    end
-    
-    -- Frame principal
-    local mainFrame = nil
-    for _, frame in ipairs(nexoGui:GetDescendants()) do
-        if frame:IsA("Frame") and frame:FindFirstChild("Title") and frame.Title.Text:find("Nexo") then
-            mainFrame = frame
-            break
-        end
-    end
-    
-    if not mainFrame then
-        for _, frame in ipairs(nexoGui:GetDescendants()) do
-            if frame:IsA("Frame") and frame.Size.X.Offset > 500 then
-                mainFrame = frame
+    -- Buscar la ScreenGui principal de Fluent/Nexo
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local coreGui = game:GetService("CoreGui")
+    local foundGui = false
+    local targetGui = nil
+
+    -- Intentamos encontrar la GUI por nombre o descendientes
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            if gui.Name:find("Fluent") or gui.Name:find("Nexo") or gui:FindFirstChildWhichIsA("Frame", true) and gui:FindFirstChildWhichIsA("Frame", true):FindFirstChild("Title") then
+                targetGui = gui
+                foundGui = true
                 break
             end
         end
     end
-    
-    if not mainFrame then
-        mainFrame = nexoGui  -- fallback
+
+    if not foundGui then
+        for _, gui in ipairs(coreGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                if gui.Name:find("Fluent") or gui.Name:find("Nexo") or gui:FindFirstChildWhichIsA("Frame", true) and gui:FindFirstChildWhichIsA("Frame", true):FindFirstChild("Title") then
+                    targetGui = gui
+                    foundGui = true
+                    break
+                end
+            end
+        end
     end
-    
-    -- Ícono con estilo VenomHub
-    local icon = Instance.new("TextButton")
-    icon.Name = "MinIconN"
-    icon.Size = UDim2.new(0, 45, 0, 45)          -- FIJO
-    icon.Position = UDim2.new(0, 15, 1, -70)
-    icon.AnchorPoint = Vector2.new(0, 1)
-    icon.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-    icon.Text = ""
-    icon.ZIndex = 12000
-    icon.Parent = nexoGui  -- Dentro de la misma GUI
-    
-    -- Círculo
-    local cr = Instance.new("UICorner")
-    cr.CornerRadius = UDim.new(1, 0)
-    cr.Parent = icon
-    
-    -- Borde blanco
+
+    if targetGui then
+        -- Si encontramos el Frame principal dentro de la ScreenGui
+        local mainFrame = nil
+        for _, frame in ipairs(targetGui:GetDescendants()) do
+            if frame:IsA("Frame") and frame:FindFirstChild("Title") and frame.Title.Text:find("Nexo") then
+                mainFrame = frame
+                break
+            end
+        end
+        if not mainFrame then
+            -- Fallback: cualquier Frame grande
+            for _, frame in ipairs(targetGui:GetDescendants()) do
+                if frame:IsA("Frame") and frame.Size.X.Offset > 400 then
+                    mainFrame = frame
+                    break
+                end
+            end
+        end
+
+        if mainFrame then
+            mainFrame.Visible = not isMinimized
+        else
+            -- Último recurso: toggle toda la ScreenGui
+            targetGui.Enabled = not isMinimized
+        end
+    end
+
+    -- Notificación para feedback
+    Fluent:Notify({
+        Title = isMinimized and "Minimizado" or "Abierto",
+        Content = isMinimized and "Toca la N para abrir" or "GUI abierta",
+        Duration = 2
+    })
+end
+
+local function createMobileIcon()
+    if not isMobile() then return end
+    if MobileIconGui then return end -- Evitar duplicados
+
+    MobileIconGui = Instance.new("ScreenGui")
+    MobileIconGui.Name = "NexoMobileIcon"
+    MobileIconGui.Parent = game:GetService("CoreGui")
+    MobileIconGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    MobileIconGui.ResetOnSpawn = false
+    MobileIconGui.IgnoreGuiInset = true
+
+    local iconButton = Instance.new("TextButton")
+    iconButton.Name = "NexoIcon"
+    iconButton.Size = UDim2.new(0, 60, 0, 60)
+    iconButton.Position = UDim2.new(1, -80, 1, -80) -- Esquina inferior derecha
+    iconButton.AnchorPoint = Vector2.new(1, 1)
+    iconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    iconButton.BackgroundTransparency = 0.3
+    iconButton.Text = "N"
+    iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    iconButton.TextSize = 40
+    iconButton.Font = Enum.Font.GothamBlack
+    iconButton.BorderSizePixel = 0
+    iconButton.TextStrokeTransparency = 0.8
+    iconButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    iconButton.ZIndex = 9999
+    iconButton.Parent = MobileIconGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = iconButton
+
+    -- Opcional: borde sutil para que se vea mejor
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.0
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.4
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = icon
-    
-    -- N blanca
-    local nLabel = Instance.new("TextLabel")
-    nLabel.Size = UDim2.new(1, 0, 1, 0)
-    nLabel.BackgroundTransparency = 1
-    nLabel.Text = "N"
-    nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nLabel.TextScaled = true
-    nLabel.Font = Enum.Font.GothamBlack
-    nLabel.Parent = icon
-    
-    local minimized = false
-    
-    icon.Activated:Connect(function()
-        minimized = not minimized
-        mainFrame.Visible = not minimized
-    end)
-    
-    -- Drag
+    stroke.Parent = iconButton
+
+    -- Drag (mover con dedo)
     local dragging = false
-    local dragStart = nil
+    local dragStartPos = nil
     local startPos = nil
-    
-    icon.InputBegan:Connect(function(input)
+
+    iconButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            dragStart = input.Position
-            startPos = icon.Position
+            dragStartPos = input.Position
+            startPos = iconButton.Position
         end
     end)
-    
-    UIS.InputChanged:Connect(function(input)
+
+    UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStart
-            icon.Position = UDim2.new(
+            local delta = input.Position - dragStartPos
+            iconButton.Position = UDim2.new(
                 startPos.X.Scale,
                 startPos.X.Offset + delta.X,
                 startPos.Y.Scale,
@@ -164,15 +182,22 @@ task.spawn(function()
             )
         end
     end)
-    
-    icon.InputEnded:Connect(function(input)
+
+    iconButton.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-    
-    mainFrame.Visible = true
-    print("[Mobile Icon] Cargado con estilo VenomHub (N + borde blanco)")
+
+    -- Click / Touch para toggle
+    iconButton.MouseButton1Click:Connect(toggleGui)
+    iconButton.Activated:Connect(toggleGui)
+end
+
+-- Ejecutar al inicio (recomiendo ponerlo después de crear la ventana Fluent)
+task.spawn(function()
+    task.wait(1.5) -- Dar tiempo a que Fluent cree la GUI
+    createMobileIcon()
 end)
 -- ╭───────────────────────────────────────────────────────────────
 -- │                           COMBAT                              │
@@ -3075,4 +3100,78 @@ do
 
             if #Players:GetPlayers() <= 1 then
                 -- Si estás solo → teleport normal al place
-                TeleportService:Te
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            else
+                -- Si hay más jugadores → intenta volver al mismo JobId
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+            end
+        end
+    })
+
+    Tabs.Misc:AddButton({
+        Title = "Server Hop",
+        Description = "Join another server",
+        Callback = function()
+            Fluent:Notify({
+                Title = "Server Hop",
+                Content = "Looking for available server...",
+                Duration = 4
+            })
+
+            local HttpService = game:GetService("HttpService")
+            local TeleportService = game:GetService("TeleportService")
+            local LocalPlayer = game.Players.LocalPlayer
+
+            local success, servers = pcall(function()
+                return HttpService:JSONDecode(
+                    game:HttpGet(
+                        "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+                    )
+                )
+            end)
+
+            if not success or not servers or not servers.data then
+                Fluent:Notify({
+                    Title = "Server Hop",
+                    Content = "Error",
+                    Duration = 5
+                })
+                return
+            end
+
+            for _, server in ipairs(servers.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    Fluent:Notify({
+                        Title = "Server Hop",
+                        Content = "Joining server with " .. server.playing .. "/" .. server.maxPlayers .. " Players",
+                        Duration = 4
+                    })
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+                    return  -- salimos después de intentar el primer servidor válido
+                end
+            end
+
+            Fluent:Notify({
+                Title = "Server Hop",
+                Content = "No available servers with space were found",
+                Duration = 5
+            })
+        end
+    })
+
+    -- Si quieres dejar el botón de Scan Points (aunque está en Dev en tu ejemplo)
+    -- Puedes moverlo aquí o dejarlo en otra pestaña
+    -- Tabs.Misc:AddButton({...}) ...
+
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │ SETTINGS │
+-- ╰───────────────────────────────────────────────────────────────
+do
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+end
+Window:SelectTab(1)
