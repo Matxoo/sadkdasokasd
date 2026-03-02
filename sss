@@ -1,4 +1,3 @@
-
 -- Nexo v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -318,8 +317,9 @@ Tabs.Combat:AddSection("Aimbot & Extras")
         rainbowFOV = Value
     end)
 -- ───────────────────────────────────────────────────────────────
---           AIMBOT MÓVIL (solo touch devices - cámara suave)
+--           AIMBOT MÓVIL MEJORADO (rápido + predicción anti-pega)
 -- ───────────────────────────────────────────────────────────────
+-- REEMPLAZA EL BLOQUE ANTERIOR COMPLETO CON ESTE (copia y pega encima)
 
 local MobileAimbot = {}
 MobileAimbot.Enabled = false
@@ -327,7 +327,6 @@ MobileAimbot.Connection = nil
 
 local function isMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-    -- Más estricto: true solo si es realmente touch y NO hay mouse real
 end
 
 local function getClosestTarget()
@@ -338,7 +337,7 @@ local function getClosestTarget()
     local camera = workspace.CurrentCamera
     local cameraPos = camera.CFrame.Position
     local closest = nil
-    local bestDot = -1  -- usamos dot product para saber quién está más centrado
+    local bestDot = -1
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
@@ -350,15 +349,15 @@ local function getClosestTarget()
         local part = player.Character:FindFirstChild(AimbotSettings.LockPart or "Head")
         if not part then continue end
         
-        -- Raycast básico para evitar paredes (opcional pero recomendado)
+        -- Raycast para visibilidad (evita paredes)
         local direction = (part.Position - cameraPos)
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
         
-        local result = workspace:Raycast(cameraPos, direction * 2, raycastParams)
+        local result = workspace:Raycast(cameraPos, direction.Unit * 5000, raycastParams)
         if result and result.Instance:IsDescendantOf(player.Character) then
-            -- Está visible
+            -- Posición en pantalla + FOV check
             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
             if onScreen then
                 local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
@@ -366,7 +365,7 @@ local function getClosestTarget()
                 local distance = vectorToTarget.Magnitude
                 
                 if distance <= (FOVSettings.Radius or 150) then
-                    local dot = 1 - (distance / (FOVSettings.Radius or 150))  -- más cerca del centro = mejor
+                    local dot = 1 - (distance / (FOVSettings.Radius or 150))
                     if dot > bestDot then
                         bestDot = dot
                         closest = part
@@ -379,22 +378,42 @@ local function getClosestTarget()
     return closest
 end
 
-local function mobileAimbotLoop()
+local function mobileAimbotLoop(deltaTime)  -- Usamos deltaTime para velocidad constante
     if not MobileAimbot.Enabled then return end
     if not isMobile() then return end
     
     local targetPart = getClosestTarget()
-    if targetPart then
+    if targetPart and targetPart.Parent then
         local camera = workspace.CurrentCamera
-        local targetCFrame = CFrame.lookAt(camera.CFrame.Position, targetPart.Position)
         
-        -- Suavizado (usa el mismo valor de smoothness que el aimbot de PC)
-        local smooth = math.clamp(AimbotSettings.Sensitivity or 0.1, 0.01, 1)
-        camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth)
+        -- PREDICCIÓN: Apunta adelante del movimiento (anti-pega + más fluido)
+        local humanoid = targetPart.Parent:FindFirstChildOfClass("Humanoid")
+        local predictedPos = targetPart.Position
+        if humanoid and humanoid.RootPart then
+            predictedPos = predictedPos + humanoid.RootPart.Velocity * 0.1  -- Predice 0.1s adelante
+        end
+        
+        local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos)
+        
+        -- SMOOTH MÁS RÁPIDO: Multiplicamos Sensitivity x3 (0.1 -> 0.3 = rápido pero suave)
+        -- Si tu slider está en 0.1 (lento), ahora será ~0.3 (rápido)
+        local baseSmooth = AimbotSettings.Sensitivity or 0.1
+        local smooth = math.clamp(baseSmooth * 3, 0.15, 0.8)  -- Mínimo 0.15 (rápido), máximo 0.8 (instantáneo)
+        
+        -- Lerp con deltaTime para no depender del FPS (más estable en móvil)
+        camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)  -- *60 para ~60 FPS normalizado
+        
+        -- ANTI-PEGA: Si ya está MUY cerca del centro, fuerza alineación perfecta
+        local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
+        local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        if pixelDist < 20 then  -- Si está a <20 píxeles del centro
+            camera.CFrame = targetCFrame  -- SNAP! Alinea perfecto sin lerp
+        end
     end
 end
 
--- Iniciar / detener el loop móvil
+-- Iniciar / detener
 local function startMobileAimbot()
     if MobileAimbot.Connection then return end
     MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
@@ -407,28 +426,27 @@ local function stopMobileAimbot()
     end
 end
 
--- Conectar al toggle principal (el mismo que usa Exunys)
+-- CONECTAR AL TOGGLE (REEMPLAZA tu AimToggle:OnChanged COMPLETO con esto)
 AimToggle:OnChanged(function(Value)
-    AimbotSettings.Enabled = Value   -- para PC (Exunys)
+    AimbotSettings.Enabled = Value  -- Para PC (Exunys)
     
-    MobileAimbot.Enabled = Value     -- para móvil
+    MobileAimbot.Enabled = Value    -- Para móvil
     
-    if Value and isMobile() then
-        startMobileAimbot()
-        Fluent:Notify({
-            Title = "Aimbot Móvil",
-            Content = "Activado (solo touch)",
-            Duration = 2.5
-        })
+    if Value then
+        if isMobile() then
+            startMobileAimbot()
+            Fluent:Notify({
+                Title = "Aimbot Móvil",
+                Content = "Activado (rápido + predicción)",
+                Duration = 2.5
+            })
+        end
     else
         stopMobileAimbot()
     end
     
     Notify("Aimbot", Value)
 end)
-
--- Si cambian el smoothness o FOV, el móvil también los usa automáticamente
--- (porque lee AimbotSettings y FOVSettings directamente)
     Tabs.Combat:AddSection("Other Combat")
 
     local MeleeToggle = Tabs.Combat:AddToggle("MeleeAura", {
