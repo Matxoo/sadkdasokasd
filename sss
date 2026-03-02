@@ -1,1 +1,2930 @@
 
+-- Nexo v1.00 - GUI final con lógica integrada
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local VirtualUser = game:GetService('VirtualUser')
+-- Original Anti-Idle from nexo free.lua
+if LocalPlayer then
+LocalPlayer.Idled:Connect(function()
+VirtualUser:CaptureController()
+VirtualUser:ClickButton2(Vector2.new())
+end)
+end
+-- Destroy Existing UI from nexo free.lua
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local oldGui = PlayerGui:FindFirstChild("VenomHubScreenGui")
+if oldGui then oldGui:Destroy() end
+local oldCategorizedGui = PlayerGui:FindFirstChild("VenomHubScreenGui_Categorized")
+if oldCategorizedGui then oldCategorizedGui:Destroy() end
+local oldKeyGui = PlayerGui:FindFirstChild("KeyVerificationUI")
+if oldKeyGui then oldKeyGui:Destroy() end
+local Window = Fluent:CreateWindow({
+Title = "Nexo v1.06",
+SubTitle = "By Mat",
+TabWidth = 160,
+Size = UDim2.fromOffset(580, 460),
+Acrylic = false,
+Theme = "Darker",
+MinimizeKey = Enum.KeyCode.K
+})
+local Tabs = {
+Combat = Window:AddTab({ Title = "Combat", Icon = "crosshair" }),
+AutoFarm = Window:AddTab({ Title = "AutoFarm", Icon = "sprout" }),
+Player = Window:AddTab({ Title = "Player", Icon = "user" }),
+Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+Misc = Window:AddTab({ Title = "Misc", Icon = "component" }),
+Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+local Options = Fluent.Options
+-- ╭───────────────────────────────────────────────────────────────
+-- │                           COMBAT                              │
+-- ╰───────────────────────────────────────────────────────────────
+do
+Tabs.Combat:AddSection("Aimbot & Extras")
+    -- Aimbot (Exunys)
+    local Aimbot = loadstring(game:HttpGet("https://raw.githubusercontent.com/Exunys/Aimbot-V3/main/src/Aimbot.lua"))()
+    Aimbot:Load()
+    local AimbotSettings = Aimbot.Settings
+    local FOVSettings = Aimbot.FOVSettings
+
+    local rainbowFOV = false
+
+    -- Rainbow loop
+    RunService.RenderStepped:Connect(function()
+        if rainbowFOV then
+            local hue = tick() % 3 / 3
+            local color = Color3.fromHSV(hue, 1, 1)
+            FOVSettings.Color = color
+        end
+    end)
+
+    local function Notify(title, value)
+        local state = value and "Enabled" or "Disabled"
+        Fluent:Notify({
+            Title = title,
+            Content = "Status: " .. state,
+            Duration = 2
+        })
+    end
+
+    -- Melee Aura (ya lo tenías, lo mantengo)
+    local MeleeAura_Enabled = false
+    local MeleeAura_Connection
+
+    local maxdist = 5
+
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    local eventsFolder = replicatedStorage:FindFirstChild("Events")
+
+    local remoteFunctionPath = "XMHH.2"
+    local remoteEventPath = "XMHH2.2"
+
+    local remote1 = eventsFolder and eventsFolder:FindFirstChild(remoteFunctionPath)
+    local remote2 = eventsFolder and eventsFolder:FindFirstChild(remoteEventPath)
+
+    local function runAttackLoop()
+        return RunService.RenderStepped:Connect(function()
+            if not MeleeAura_Enabled then return end
+
+            local me = Players.LocalPlayer
+            local char = me.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= me then
+                    local c = plr.Character
+                    local hrp2 = c and c:FindFirstChild("HumanoidRootPart")
+                    local hum = c and c:FindFirstChildOfClass("Humanoid")
+
+                    if hrp2 and hum and hum.Health > 15 and not c:FindFirstChildOfClass("ForceField") then
+                        local dist = (hrp.Position - hrp2.Position).Magnitude
+                        if dist < maxdist then
+                            local tool = char and char:FindFirstChildOfClass("Tool")
+                            if not tool then return end
+
+                            local Handle = tool:FindFirstChild("WeaponHandle") or tool:FindFirstChild("Handle") or (char and char:FindFirstChild("Right Arm"))
+                            local head = c:FindFirstChild("Head")
+
+                            if remote1 and remote1:IsA("RemoteFunction") and remote2 and remote2:IsA("RemoteEvent") then
+                                local arg1 = {
+                                    [1] = "🍞",
+                                    [2] = tick(),
+                                    [3] = tool,
+                                    [4] = "43TRFWX",
+                                    [5] = "Normal",
+                                    [6] = tick(),
+                                    [7] = true
+                                }
+                                local success1, result = pcall(function()
+                                    return remote1:InvokeServer(unpack(arg1))
+                                end)
+
+                                if success1 then
+                                    task.wait(0.1)
+
+                                    if Handle and head and hrp then
+                                        local arg2 = {
+                                            [1] = "🍞",
+                                            [2] = tick(),
+                                            [3] = tool,
+                                            [4] = "2389ZFX34",
+                                            [5] = result,
+                                            [6] = false,
+                                            [7] = Handle,
+                                            [8] = head,
+                                            [9] = c,
+                                            [10] = hrp.Position,
+                                            [11] = head.Position
+                                        }
+                                        pcall(function()
+                                            remote2:FireServer(unpack(arg2))
+                                        end)
+                                    end
+                                else
+                                    warn("MeleeAura InvokeServer failed:", result)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    local function MeleeAura_Enable()
+        if MeleeAura_Enabled then return end
+        MeleeAura_Enabled = true
+        if MeleeAura_Connection then MeleeAura_Connection:Disconnect() end
+        MeleeAura_Connection = runAttackLoop()
+        Fluent:Notify({Title = "Melee Aura", Content = "Enabled", Duration = 2})
+    end
+
+    local function MeleeAura_Disable()
+        if not MeleeAura_Enabled then return end
+        MeleeAura_Enabled = false
+        if MeleeAura_Connection then
+            MeleeAura_Connection:Disconnect()
+            MeleeAura_Connection = nil
+        end
+        Fluent:Notify({Title = "Melee Aura", Content = "Disabled", Duration = 2})
+    end
+
+    -- No Recoil
+    local NoRecoil_Enabled = false
+    local NoRecoil_Connections = {}
+    local GlobalOriginalValues = {}
+    local WeaponCache = {}
+    local Settings = {GunMods = {NoRecoil = true, Spread = true, SpreadAmount = 0}}
+
+    local function cacheWeapons()
+        WeaponCache = {}
+        for _, v in pairs(getgc(true)) do
+            if type(v) == 'table' and rawget(v, 'EquipTime') then
+                table.insert(WeaponCache, v)
+                if not GlobalOriginalValues[v] then
+                    GlobalOriginalValues[v] = {
+                        Recoil = v.Recoil,
+                        CameraRecoilingEnabled = v.CameraRecoilingEnabled,
+                        AngleX_Min = v.AngleX_Min, AngleX_Max = v.AngleX_Max,
+                        AngleY_Min = v.AngleY_Min, AngleY_Max = v.AngleY_Max,
+                        AngleZ_Min = v.AngleZ_Min, AngleZ_Max = v.AngleZ_Max,
+                        Spread = v.Spread
+                    }
+                end
+            end
+        end
+    end
+
+    local function applyGunMods()
+        for _, weapon in ipairs(WeaponCache) do
+            if Settings.GunMods.NoRecoil then
+                weapon.Recoil = 0
+                weapon.CameraRecoilingEnabled = false
+                weapon.AngleX_Min = 0; weapon.AngleX_Max = 0
+                weapon.AngleY_Min = 0; weapon.AngleY_Max = 0
+                weapon.AngleZ_Min = 0; weapon.AngleZ_Max = 0
+            end
+            if Settings.GunMods.Spread then
+                weapon.Spread = Settings.GunMods.SpreadAmount
+            end
+        end
+    end
+
+    local function resetGunMods()
+        for weapon, values in pairs(GlobalOriginalValues) do
+            weapon.Recoil = values.Recoil
+            weapon.CameraRecoilingEnabled = values.CameraRecoilingEnabled
+            weapon.AngleX_Min = values.AngleX_Min; weapon.AngleX_Max = values.AngleX_Max
+            weapon.AngleY_Min = values.AngleY_Min; weapon.AngleY_Max = values.AngleY_Max
+            weapon.AngleZ_Min = values.AngleZ_Min; weapon.AngleZ_Max = values.AngleZ_Max
+            weapon.Spread = values.Spread
+        end
+    end
+
+    local function handleWeapon(weapon)
+        if NoRecoil_Enabled then
+            task.wait(0.1)
+            cacheWeapons()
+            applyGunMods()
+        end
+    end
+
+    local function onCharacterAdded_nr(character)
+        for _, child in ipairs(character:GetChildren()) do
+            if child:IsA("Tool") then handleWeapon(child) end
+        end
+        table.insert(NoRecoil_Connections, character.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then handleWeapon(child) end
+        end))
+        local humanoid = character:WaitForChild("Humanoid", 2)
+        if humanoid then
+            table.insert(NoRecoil_Connections, humanoid.Died:Connect(function()
+                if NoRecoil_Enabled then
+                    task.wait(1.5)
+                    cacheWeapons()
+                    applyGunMods()
+                end
+            end))
+        end
+    end
+
+    local function NoRecoil_Enable()
+        if NoRecoil_Enabled then return end
+        NoRecoil_Enabled = true
+        cacheWeapons()
+        applyGunMods()
+        table.insert(NoRecoil_Connections, LocalPlayer.CharacterAdded:Connect(onCharacterAdded_nr))
+        if LocalPlayer.Character then onCharacterAdded_nr(LocalPlayer.Character) end
+        Fluent:Notify({Title = "No Recoil", Content = "Enabled", Duration = 2})
+    end
+
+    local function NoRecoil_Disable()
+        if not NoRecoil_Enabled then return end
+        NoRecoil_Enabled = false
+        resetGunMods()
+        for _, conn in ipairs(NoRecoil_Connections) do conn:Disconnect() end
+        NoRecoil_Connections = {}
+        Fluent:Notify({Title = "No Recoil", Content = "Disabled", Duration = 2})
+    end
+
+    -- UI Elements
+    Tabs.Combat:AddParagraph({ Title = "Aimbot", Content = "Auto Aiming Settings" })
+
+    local AimToggle = Tabs.Combat:AddToggle("AimEnabled", { Title = "Enabled", Default = false })
+    AimToggle:OnChanged(function(Value) 
+        AimbotSettings.Enabled = Value 
+        Notify("Aimbot", Value)
+    end)
+
+    Tabs.Combat:AddDropdown("AimPart", {
+        Title = "Target Part", Values = {"Head", "HumanoidRootPart"}, Default = "Head",
+        Callback = function(Value) AimbotSettings.LockPart = Value end
+    })
+
+    Tabs.Combat:AddKeybind("AimBind", {
+        Title = "Bind", Mode = "Toggle", Default = "V",
+        Callback = function(Value) Options.AimEnabled:SetValue(Value) end,
+    })
+
+    Tabs.Combat:AddSlider("AimSmooth", {
+        Title = "Smoothness", Default = 0.1, Min = 0.01, Max = 1, Rounding = 2,
+        Callback = function(Value) AimbotSettings.Sensitivity = Value end
+    })
+
+    Tabs.Combat:AddParagraph({ Title = "FOV", Content = "Fov Circle Settings" })
+
+    Tabs.Combat:AddToggle("FOVVisible", { Title = "Show FOV", Default = true }):OnChanged(function(Value)
+        FOVSettings.Visible = Value
+        FOVSettings.Enabled = Value
+    end)
+
+    Tabs.Combat:AddColorpicker("FOVColor", {
+        Title = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(Value) if not rainbowFOV then FOVSettings.Color = Value end end
+    })
+    
+    Tabs.Combat:AddSlider("AimFOV", {
+        Title = "FOV Radius", Default = 150, Min = 10, Max = 800, Rounding = 0,
+        Callback = function(Value) FOVSettings.Radius = Value end
+    })
+
+    Tabs.Combat:AddToggle("FOVRainbow", { Title = "Rainbow FOV", Default = false }):OnChanged(function(Value)
+        rainbowFOV = Value
+    end)
+-- ───────────────────────────────────────────────────────────────
+--           AIMBOT MÓVIL (solo touch devices - cámara suave)
+-- ───────────────────────────────────────────────────────────────
+
+local MobileAimbot = {}
+MobileAimbot.Enabled = false
+MobileAimbot.Connection = nil
+
+local function isMobile()
+    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+    -- Más estricto: true solo si es realmente touch y NO hay mouse real
+end
+
+local function getClosestTarget()
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+
+    local camera = workspace.CurrentCamera
+    local cameraPos = camera.CFrame.Position
+    local closest = nil
+    local bestDot = -1  -- usamos dot product para saber quién está más centrado
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if not player.Character then continue end
+        
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then continue end
+        
+        local part = player.Character:FindFirstChild(AimbotSettings.LockPart or "Head")
+        if not part then continue end
+        
+        -- Raycast básico para evitar paredes (opcional pero recomendado)
+        local direction = (part.Position - cameraPos)
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        local result = workspace:Raycast(cameraPos, direction * 2, raycastParams)
+        if result and result.Instance:IsDescendantOf(player.Character) then
+            -- Está visible
+            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+                local vectorToTarget = Vector2.new(screenPos.X, screenPos.Y) - screenCenter
+                local distance = vectorToTarget.Magnitude
+                
+                if distance <= (FOVSettings.Radius or 150) then
+                    local dot = 1 - (distance / (FOVSettings.Radius or 150))  -- más cerca del centro = mejor
+                    if dot > bestDot then
+                        bestDot = dot
+                        closest = part
+                    end
+                end
+            end
+        end
+    end
+    
+    return closest
+end
+
+local function mobileAimbotLoop()
+    if not MobileAimbot.Enabled then return end
+    if not isMobile() then return end
+    
+    local targetPart = getClosestTarget()
+    if targetPart then
+        local camera = workspace.CurrentCamera
+        local targetCFrame = CFrame.lookAt(camera.CFrame.Position, targetPart.Position)
+        
+        -- Suavizado (usa el mismo valor de smoothness que el aimbot de PC)
+        local smooth = math.clamp(AimbotSettings.Sensitivity or 0.1, 0.01, 1)
+        camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth)
+    end
+end
+
+-- Iniciar / detener el loop móvil
+local function startMobileAimbot()
+    if MobileAimbot.Connection then return end
+    MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
+end
+
+local function stopMobileAimbot()
+    if MobileAimbot.Connection then
+        MobileAimbot.Connection:Disconnect()
+        MobileAimbot.Connection = nil
+    end
+end
+
+-- Conectar al toggle principal (el mismo que usa Exunys)
+AimToggle:OnChanged(function(Value)
+    AimbotSettings.Enabled = Value   -- para PC (Exunys)
+    
+    MobileAimbot.Enabled = Value     -- para móvil
+    
+    if Value and isMobile() then
+        startMobileAimbot()
+        Fluent:Notify({
+            Title = "Aimbot Móvil",
+            Content = "Activado (solo touch)",
+            Duration = 2.5
+        })
+    else
+        stopMobileAimbot()
+    end
+    
+    Notify("Aimbot", Value)
+end)
+
+-- Si cambian el smoothness o FOV, el móvil también los usa automáticamente
+-- (porque lee AimbotSettings y FOVSettings directamente)
+    Tabs.Combat:AddSection("Other Combat")
+
+    local MeleeToggle = Tabs.Combat:AddToggle("MeleeAura", {
+        Title = "Melee Aura",
+        Default = false
+    })
+    MeleeToggle:OnChanged(function(value)
+        if value then
+            MeleeAura_Enable()
+        else
+            MeleeAura_Disable()
+        end
+    end)
+
+    local NoRecoilToggle = Tabs.Combat:AddToggle("NoRecoil", {
+        Title = "No Recoil",
+        Default = false
+    })
+    NoRecoilToggle:OnChanged(function(value)
+        if value then
+            NoRecoil_Enable()
+        else
+            NoRecoil_Disable()
+        end
+    end)
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │                         AUTOFARM                              │
+-- ╰───────────────────────────────────────────────────────────────
+do
+    Tabs.AutoFarm:AddSection("Autofarming & Extras")
+    -- Roblox Services (tal cual los querés)
+    local services = {
+        ws = game:GetService("Workspace"),
+        pl = game:GetService("Players"),
+        rs_rep = game:GetService("ReplicatedStorage"),
+        rs = game:GetService("RunService"),
+        uis = game:GetService("UserInputService")
+    }
+
+    -- Local Variables
+    local localPlayer = services.pl.LocalPlayer
+    local task = task
+    local wait = task.wait
+
+    local autofarmEnabled = false
+    local autofarmCooldown = false
+    local ignoredSafes = {}
+
+    -- Global Variables for Ping
+    local pingThreshold = 100 -- You can adjust this value
+    local isPingHigh = false
+
+    -- Placeholder for CoolDowns if not defined globally yet
+    local CoolDowns = { AutoPickUps = { MoneyCooldown = false } }
+    -- Placeholder for Settings if not defined globally yet
+    local Settings = { IsDead = false }
+
+    -- Function to check ping
+    local function getPing()
+        local ping = localPlayer:GetNetworkPing()
+        return ping * 1000 -- Convert to milliseconds
+    end
+
+    -- A new coroutine to constantly check ping in the background
+    task.spawn(function()
+        while task.wait(5) do -- Check ping every 5 seconds
+            local ping = getPing()
+            if ping > pingThreshold then
+                isPingHigh = true
+            else
+                isPingHigh = false
+            end
+        end
+    end)
+
+    --======================= SHADOW MODE (Reworked Invisibility) =========================--
+
+    local Shadow_Active = false -- Nowa zmienna statusu
+    local Shadow_Usable = true -- Nowa zmienna zgodności
+
+    do -- Nowy 'do' block
+        repeat task.wait() until game:IsLoaded();
+
+        local svc_ref = cloneref or function(...) return ... end;
+
+        local GS = setmetatable({}, {
+            __index = function(_, k)
+                return svc_ref(game:GetService(k));
+            end
+        });
+
+        local P = GS.Players.LocalPlayer;
+        local Char = P.Character or P.CharacterAdded:Wait();
+        local HMND = nil
+        local HRP = nil
+
+        local function RefreshCharRefs()
+            Char = P.Character
+            if Char then
+                HRP = Char:FindFirstChild("HumanoidRootPart")
+                HMND = Char:FindFirstChildOfClass("Humanoid")
+            else
+                HRP = nil
+                HMND = nil
+            end
+        end
+
+        RefreshCharRefs() -- Initial call
+
+        local AnimTrack_Cache = nil
+        local CamoAnim = Instance.new("Animation");
+        CamoAnim.AnimationId = "rbxassetid://215384594";
+
+        local RS = GS.RunService;
+        local UpdateFrame = RS.Heartbeat;
+        local WaitRender = RS.RenderStepped;
+
+        local CoreGS = GS.CoreGui;
+        local StartGS = GS.StarterGui;
+
+        -- GUI for warning message (uses original names for clarity on screen)
+        local HUD = Instance.new("ScreenGui");
+        HUD.Name = "ShadowWarningHUD";
+        HUD.Parent = CoreGS;
+        HUD.ResetOnSpawn = false;
+        HUD.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
+
+        local WarningText = Instance.new("TextLabel", HUD);
+        WarningText.Text = "⚠️You are visible⚠️";
+        WarningText.Visible = false;
+        WarningText.Size = UDim2.new(0, 200, 0, 30);
+        WarningText.Position = UDim2.new(0.5, -100, 0.85, 0);
+        WarningText.BackgroundTransparency = 1;
+        WarningText.Font = Enum.Font.GothamSemibold;
+        WarningText.TextSize = 24;
+        WarningText.TextColor3 = Color3.fromRGB(255, 255, 0);
+        WarningText.TextStrokeTransparency = 0.5;
+        WarningText.ZIndex = 10;
+
+        -- Check R6 requirement
+        if Char and not Char:FindFirstChild("Torso") then
+            pcall(function()
+                StartGS:SetCore("SendNotification", {
+                    Title = "Shadow Mode FAILED",
+                    Text = "Feature requires R6 Avatar.",
+                    Duration = 5,
+                });
+            end)
+            Shadow_Usable = false
+        end
+
+        local function CheckGrounded()
+            return HMND and HMND:IsDescendantOf(workspace) and HMND.FloorMaterial ~= Enum.Material.Air;
+        end
+
+        local function CacheAnimTrack()
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            if HMND then
+                local success, result = pcall(function()
+                    return HMND:LoadAnimation(CamoAnim)
+                end)
+                if success then
+                    AnimTrack_Cache = result
+                    AnimTrack_Cache.Priority = Enum.AnimationPriority.Action4;
+                else
+                    AnimTrack_Cache = nil
+                end
+            else
+                AnimTrack_Cache = nil
+            end
+        end
+
+        -- Nowa nazwa: DeactivateShadow
+        local function DeactivateShadow()
+            if not Shadow_Active then return end
+            Shadow_Active = false;
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            if HMND then
+                workspace.CurrentCamera.CameraSubject = HMND;
+            end
+
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Transparency == 0.5 then
+                        v.Transparency = 0;
+                    end
+                end
+            end
+            
+            WarningText.Visible = false;
+        end
+
+        -- Nowa nazwa: ActivateShadow
+        local function ActivateShadow()
+            if Shadow_Active or not Shadow_Usable then return end
+
+            RefreshCharRefs()
+            if not Char or not HMND or not HRP then
+                return
+            end
+            if not Char:FindFirstChild("Torso") then
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode FAILED", Text = "Feature requires R6 Avatar.", Duration = 5}) end)
+                return
+            end
+
+            Shadow_Active = true;
+            workspace.CurrentCamera.CameraSubject = HRP;
+
+            CacheAnimTrack()
+        end
+
+        -- Zmiana użycia pętli Heartbeat na inną funkcję zamykającą
+        local function ShadowStep(deltaTime)
+            -- Check character validity *inside* the loop - CRITICAL for reset safety
+            if not Char or not HMND or not HRP or not HMND:IsDescendantOf(workspace) or HMND.Health <= 0 then
+                WarningText.Visible = false;
+                return
+            end
+
+            WarningText.Visible = not CheckGrounded();
+
+            -- Manual movement update
+            local walk_speed = 12
+            if HMND.MoveDirection.Magnitude > 0 then
+                local velocity_offset = HMND.MoveDirection * walk_speed * deltaTime
+                HRP.CFrame = HRP.CFrame + velocity_offset
+            end
+
+            local InitialCFrame = HRP.CFrame;
+            local InitialCamOffset = HMND.CameraOffset;
+
+            -- Apply pose transformations
+            local _, yaw_angle = workspace.CurrentCamera.CFrame:ToOrientation();
+            HRP.CFrame = CFrame.new(HRP.CFrame.Position) * CFrame.fromOrientation(0, yaw_angle, 0);
+            HRP.CFrame = HRP.CFrame * CFrame.Angles(math.rad(90), 0, 0);
+            HMND.CameraOffset = Vector3.new(0, 1.44, 0);
+
+            -- Animation logic
+            if AnimTrack_Cache then
+                local successPlay = pcall(function()
+                    if not AnimTrack_Cache.IsPlaying then
+                        AnimTrack_Cache:Play();
+                    end
+                    AnimTrack_Cache:AdjustSpeed(0);
+                    AnimTrack_Cache.TimePosition = 0.3;
+                end)
+                if not successPlay then
+                    CacheAnimTrack()
+                end
+            elseif HMND and HMND.Health > 0 then
+                CacheAnimTrack()
+            end
+
+            -- Wait for render frame
+            WaitRender:Wait();
+
+            -- Revert transformations
+            if HMND and HMND:IsDescendantOf(workspace) then
+                HMND.CameraOffset = InitialCamOffset;
+            end
+            if HRP and HRP:IsDescendantOf(workspace) then
+                HRP.CFrame = InitialCFrame;
+            end
+
+            -- Stop animation track
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            -- Re-orient character to camera
+            if HRP and HRP:IsDescendantOf(workspace) then
+                local LookVec = workspace.CurrentCamera.CFrame.LookVector;
+                local FlatLook = Vector3.new(LookVec.X, 0, LookVec.Z).Unit;
+                if FlatLook.Magnitude > 0.1 then
+                    local FinalCFrame = CFrame.new(HRP.Position, HRP.Position + FlatLook);
+                    HRP.CFrame = FinalCFrame;
+                end
+            end
+
+            -- Apply transparency
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if (v:IsA("BasePart") and v.Transparency ~= 1) then
+                        v.Transparency = 0.5;
+                    end
+                end
+            end
+        end
+
+        -- Zmieniona pętla główna (Reworked Main Loop)
+        UpdateFrame:Connect(function(deltaTime)
+            if not Shadow_Active or not Shadow_Usable then
+                -- Reset logic when disabled
+                if not Shadow_Active and Char then
+                    for _, v in pairs(Char:GetDescendants()) do
+                        if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
+                    end
+                end
+                WarningText.Visible = false
+                return;
+            end
+            
+            ShadowStep(deltaTime)
+        end)
+
+        -- Handle character changes
+        P.CharacterAdded:Connect(function(NewCharacter)
+            -- Reset state immediately
+            if Shadow_Active then DeactivateShadow() end
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+
+            task.wait()
+
+            RefreshCharRefs()
+
+            if not HMND then
+                task.wait(0.5)
+                RefreshCharRefs()
+                if not HMND then
+                    Shadow_Usable = false
+                    if Shadow_Active then DeactivateShadow() end
+                    pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Error", Text = "Could not verify character type.", Duration = 5}) end)
+                    return
+                end
+            end
+
+            if HMND.RigType ~= Enum.HumanoidRigType.R6 then
+                Shadow_Usable = false
+                if Shadow_Active then DeactivateShadow() end
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Warning", Text = "Non-R6 Avatar detected (".. tostring(HMND.RigType) .."). Disabled.", Duration = 5}) end)
+                return
+            else
+                Shadow_Usable = true
+            end
+        end)
+
+        P.CharacterRemoving:Connect(function(OldCharacter)
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            WarningText.Visible = false
+        end)
+
+        -- Expose new global functions
+        _G.IsShadowActive = function() return Shadow_Active end
+        _G.ActivateShadow = ActivateShadow
+        _G.DeactivateShadow = DeactivateShadow
+
+    end -- End of Shadow Mode 'do' block
+
+    -- Bread Collector (Auto Pickup Money)
+    local Collector_Enabled = false
+    local Collector_Signal = nil
+
+    local function Collector_CoreLogic()
+        local RS_S = RunService
+        local RS_Rep = game:GetService("ReplicatedStorage")
+        local WS = game:GetService("Workspace")
+
+        local function RunCollectorLogic()
+            if not Collector_Enabled or Settings.IsDead then return end
+
+            local breadContainer = WS.Filter:FindFirstChild("SpawnedBread")
+            local pickupRemote = RS_Rep.Events:FindFirstChild("CZDPZUS")
+
+            if not breadContainer then
+                warn("BreadCollector: SpawnedBread folder missing. Pausing pickup logic.")
+                return
+            end
+            if not pickupRemote then
+                warn("BreadCollector: Pickup RemoteEvent missing. Pausing pickup logic.")
+                return
+            end
+
+            local p_char = localPlayer.Character
+            local root_part = p_char and p_char:FindFirstChild("HumanoidRootPart")
+
+            if not root_part or CoolDowns.AutoPickUps.MoneyCooldown then return end
+
+            local current_pos = root_part.Position
+            for _, item in ipairs(breadContainer:GetChildren()) do
+                local dist_sq = (current_pos - item.Position).Magnitude^2
+                if dist_sq < 400 and not CoolDowns.AutoPickUps.MoneyCooldown then
+                    CoolDowns.AutoPickUps.MoneyCooldown = true
+                    
+                    pcall(function()
+                        pickupRemote:FireServer(item)
+                    end)
+                    
+                    task.wait(1.1)
+                    
+                    CoolDowns.AutoPickUps.MoneyCooldown = false
+                    break
+                end
+            end
+        end
+
+        Collector_Signal = RS_S.RenderStepped:Connect(RunCollectorLogic)
+    end
+
+    local function Collector_Activate()
+        if Collector_Enabled then return end
+        Collector_Enabled = true
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        Collector_CoreLogic()
+    end
+
+    local function Collector_Deactivate()
+        if not Collector_Enabled then return end
+        Collector_Enabled = false
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        if CoolDowns and CoolDowns.AutoPickUps then
+            CoolDowns.AutoPickUps.MoneyCooldown = false
+        end
+    end
+
+    -- Main function to enable the autofarm and invisibility
+    local function Autofarm_Enable()
+        if autofarmEnabled then return end
+        autofarmEnabled = true
+        
+        _G.ActivateShadow() -- Shadow Mode (Invisibility)
+        Collector_Activate() -- Bread Collector (Auto Pickup Money)
+        -- Noclip_Enable() -- Si tenés Noclip, descomentá y ajustá
+        
+        Fluent:Notify({Title = "AutoFarm", Content = "Enabled", Duration = 2})
+    end
+
+    -- Main function to disable the autofarm and invisibility
+    local function Autofarm_Disable()
+        if not autofarmEnabled then return end
+        autofarmEnabled = false
+        
+        _G.DeactivateShadow()
+        Collector_Deactivate()
+        -- Noclip_Disable() -- Si tenés Noclip, descomentá y ajustá
+        
+        Fluent:Notify({Title = "AutoFarm", Content = "Disabled", Duration = 2})
+    end
+
+    -- NOWA, WZMOCNIONA LOGIKA RESPONSU
+    task.spawn(function()
+        local deathRespawnEvent = services.rs_rep:WaitForChild("Events"):WaitForChild("DeathRespawn")
+        while task.wait() do
+            local char = localPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health <= 0 and autofarmEnabled then
+                    deathRespawnEvent:InvokeServer("KMG4R904")
+                    task.wait(2) -- Dłuższe oczekiwanie na pełny respawn
+                end
+            end
+        end
+    end)
+
+    -- Handle character respawn and script resume
+    localPlayer.CharacterAdded:Connect(function(character)
+        if not autofarmEnabled then
+            return
+        end
+
+        -- Dłuższe oczekiwanie na pełne załadowanie postaci i elementów gry
+        character:WaitForChild("HumanoidRootPart", 5)
+        task.wait(1.5)
+
+        -- TWARDY RESET STANU LOKALNEGO
+        autofarmCooldown = false
+        ignoredSafes = {}
+        
+        -- Wymuś ponowną aktywację, aby zsynchronizować stan ze skryptami
+        Autofarm_Enable()
+    end)
+
+    -- =================================================================================
+    -- --- BARDZIEJ NIEZAWODNA FUNKCJA TELEPORTACJI ---
+    -- =================================================================================
+    local function teleportTo(targetPart)
+        local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart", 10)
+        if not hrp then
+            return false
+        end
+
+        if not (targetPart and targetPart:IsA("BasePart")) then
+            return false
+        end
+
+        local success = false
+        local attempts = 0
+        while not success and attempts < 4 do -- Mniej prób, ale każda jest dokładniejsza
+            local targetCframe = targetPart.CFrame
+            local targetPos = (targetCframe + targetCframe.LookVector * 2).Position
+
+            hrp.CFrame = CFrame.new(targetPos) * CFrame.Angles(0, math.pi / 2, 0)
+            wait(0.5) -- Krótki wait na "przyjęcie" CFrame przez serwer
+
+            -- Nowa, ulepszona logika weryfikacji pozycji
+            local isStable = true
+            local stabilityChecks = 10 -- Ile razy sprawdzić pozycję
+            local checkInterval = 0.2 -- Co ile sekund
+
+            -- Aktywnie sprawdzamy stabilność pozycji przez 2 sekundy (10 * 0.2)
+            for i = 1, stabilityChecks do
+                wait(checkInterval)
+                if not hrp or not hrp.Parent then -- Sprawdzenie czy postać wciąż istnieje
+                    isStable = false
+                    break
+                end
+                
+                local currentDistance = (hrp.Position - targetPos).Magnitude
+                if currentDistance > 5 then -- Jeśli gracz został odrzucony/przesunięty
+                    isStable = false
+                    break -- Przerwij sprawdzanie, teleportacja nieudana
+                end
+            end
+
+            if isStable then
+                success = true
+            else
+                attempts = attempts + 1
+                wait(1) -- Odczekaj chwilę przed kolejną próbą
+            end
+        end
+
+        return success
+    end
+
+
+    -- Function to check if the player has a tool (crowbar)
+    local function hasTool(toolName)
+        local backpackTool = localPlayer.Backpack:FindFirstChild(toolName)
+        local characterTool = localPlayer.Character and localPlayer.Character:FindFirstChild(toolName)
+        return backpackTool or characterTool
+    end
+
+    -- Function to find the nearest working target
+    local function findNearestTarget(targetsToIgnore)
+        local bredMakurzFolder = services.ws.Map:FindFirstChild("BredMakurz") or services.ws.Filter:FindFirstChild("BredMakurz")
+        local char = localPlayer.Character
+
+        if not bredMakurzFolder then
+            warn("DIAGNOSTYKA: Nie znaleziono folderu 'BredMakurz' w Map ani Filter.")
+            return nil
+        end
+        if not char then return nil end
+
+        local nearestTarget = nil
+        local shortestDistance = math.huge
+        local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
+
+        for _, v in ipairs(bredMakurzFolder:GetChildren()) do
+            if (string.find(v.Name, "Safe") or string.find(v.Name, "Register")) and not table.find(targetsToIgnore, v) then
+                local values = v:FindFirstChild("Values")
+                if values then
+                    local broken = values:FindFirstChild("Broken")
+                    if broken and broken:IsA("BoolValue") and not broken.Value then
+                        local targetPart = v.PrimaryPart or v:FindFirstChild("MainPart") or v:FindFirstChild("PosPart")
+                        if targetPart then
+                            local distance = (targetPart.Position - playerPosition).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                nearestTarget = v
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return nearestTarget
+    end
+
+    -- Function to find the nearest crowbar dealer
+    local function findNearestDealer()
+        local shopz = services.ws.Map:FindFirstChild("Shopz")
+        local char = localPlayer.Character
+
+        if not shopz or not char then return nil end
+
+        local nearestDealer = nil
+        local shortestDistance = math.huge
+        local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
+
+        for _, dealer in ipairs(shopz:GetChildren()) do
+            local crowbarStock = dealer:FindFirstChild("CurrentStocks") and dealer.CurrentStocks:FindFirstChild("Crowbar")
+            if crowbarStock and crowbarStock.Value > 0 and dealer:FindFirstChild("MainPart") then
+                local distance = (dealer.MainPart.Position - playerPosition).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestDealer = dealer
+                end
+            end
+        end
+        return nearestDealer
+    end
+
+    -- Function to open a safe with simulated hits + SIMULA D A D A PARA RECOGER DINERO
+    local function openSafe(safeModel)
+        local equippedCrowbar = hasTool("Crowbar")
+        if not equippedCrowbar then return end
+
+        local remoteXMHH = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH.2")
+        local remoteXMHH2 = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH2.2")
+        local safeMainPart = safeModel:WaitForChild("MainPart", 5)
+        if not safeMainPart then return end
+
+        local startTime = tick()
+        while safeModel and safeModel.Parent and safeModel.Values and safeModel.Values.Broken and not safeModel.Values.Broken.Value and (tick() - startTime < 15) do
+            local char = localPlayer.Character
+            if not char then break end
+
+            local safeOpenValue = remoteXMHH:InvokeServer("\240\159\141\158", tick(), equippedCrowbar, "DZDRRRKI", safeModel, "Register")
+            if safeOpenValue == nil then task.wait(1) continue end
+
+            local currentTime = tick()
+            remoteXMHH2:FireServer("\240\159\141\158", currentTime, equippedCrowbar, "2389ZFX34", safeOpenValue, false,
+                char["Right Arm"], safeMainPart, safeModel, safeMainPart.Position, safeMainPart.Position)
+            task.wait(0.2)
+        end
+
+        -- === SIMULA APRETAR D A D A ===
+        local virtualInput = game:GetService("VirtualInputManager")
+        local keysSequence = {Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.S, Enum.KeyCode.S,}
+
+        for _, key in ipairs(keysSequence) do
+            virtualInput:SendKeyEvent(true, key, false, game)  -- Apreta
+            task.wait(0.1)
+            virtualInput:SendKeyEvent(false, key, false, game) -- Suelta
+            task.wait(0.15)
+        end
+
+        task.wait(8) -- Tiempo para siguiente safe
+    end
+
+    -- =================================================================================
+    -- --- GŁÓWNA LOGIKA AUTOMATYZACJI (WERSJA Z INTELIGENTNYM CZEKANIEM) ---
+    -- =================================================================================
+    local noTargetCounter = 0 -- Licznik nieudanych prób znalezienia celu
+
+    task.spawn(function()
+        while true do
+            wait(1) -- Podstawowe opóźnienie na początku każdej pętli
+            local char = localPlayer.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid then
+                Settings.IsDead = humanoid.Health <= 0
+            end
+            
+            if not autofarmEnabled or autofarmCooldown or not char or not humanoid or humanoid.Health <= 0 or isPingHigh then
+                continue
+            end
+            
+            local crowbar = hasTool("Crowbar")
+            if not crowbar then
+                local dealer = findNearestDealer()
+                if dealer then
+                    if teleportTo(dealer:WaitForChild("MainPart")) then
+                        wait(1)
+                        services.rs_rep.Events.BYZERSPROTEC:FireServer(true, "shop", dealer.MainPart, "IllegalStore")
+                        wait(1)
+                        local args = {"IllegalStore", "Melees", "Crowbar", dealer.MainPart, nil, true}
+                        services.rs_rep.Events.SSHPRMTE1:InvokeServer(unpack(args))
+                        wait(20) -- Skrócony czas oczekiwania na finalizację zakupu
+                        services.rs_rep.Events.BYZERSPROTEC:FireServer(false)
+                    else
+                        wait(5)
+                    end
+                else
+                    wait(10)
+                end
+            else -- Gracz MA łom
+                local target = findNearestTarget(ignoredSafes)
+                if target then
+                    noTargetCounter = 0 -- Zresetuj licznik, bo znaleziono cel
+                    
+                    if teleportTo(target:WaitForChild("MainPart")) then
+                        -- Sprawdź, czy narzędzie nie jest już wyposażone
+                        if localPlayer.Character:FindFirstChild("Crowbar") == nil then
+                            local success, err = pcall(function()
+                                localPlayer.Character.Humanoid:EquipTool(crowbar)
+                            end)
+                            if not success then
+                                task.wait(1)
+                                pcall(function() localPlayer.Character.Humanoid:EquipTool(crowbar) end)
+                            end
+                        end
+                        
+                        wait(1)
+                        openSafe(target)
+                    else
+                        table.insert(ignoredSafes, target)
+                        wait(0.5)
+                    end
+                else -- Nie znaleziono żadnego celu
+                    noTargetCounter = noTargetCounter + 1
+                    
+                    -- Inteligentna logika czekania
+                    if noTargetCounter >= 4 then
+                        ignoredSafes = {} -- Wyczyść listę ignorowanych, może coś się odblokuje
+                        noTargetCounter = 0 -- Zresetuj licznik
+                        wait(15)
+                    else
+                        wait(5) -- Krótsze oczekiwanie przy standardowym braku celu
+                    end
+                end
+            end
+        end
+    end)
+
+    -- Conexión al toggle de la GUI (sin cambiar nada de tu lógica)
+    local FarmToggle = Tabs.AutoFarm:AddToggle("FarmEnabled", {
+        Title = "AutoFarm",
+        Default = false
+    })
+    FarmToggle:OnChanged(function(value)
+        autofarmEnabled = value
+        if value then
+            Autofarm_Enable()
+        else
+            Autofarm_Disable()
+        end
+    end)
+
+    -- Mantenemos tus toggles existentes
+    Tabs.AutoFarm:AddToggle("StaffDetector", {
+        Title = "Staff Detector",
+        Default = false
+    })
+         -- ======================== STAFF DETECTOR ========================
+     local AdminCheck_Enabled = false
+     local AdminCheck_Connection = nil
+
+     -- --- Konfiguracja Staff ---
+     local staffPlayers = {
+         groups = {
+             [4165692] = { -- crimcorp
+                 ["Tester"] = true, ["Contributor"] = true, ["Tester+"] = true, ["Developer"] = true,
+                 ["Developer+"] = true, ["Community Manager"] = true, ["Manager"] = true, ["Owner"] = true
+             },
+             [32406137] = { -- staff thing
+                 ["Junior"] = true, ["Moderator"] = true, ["Senior"] = true, ["Administrator"] = true,
+                 ["Manager"] = true, ["Holder"] = true
+             },
+             [8024440] = { -- r3shape fanclub
+                 ["zzzz"] = true, ["reshape enjoyer"] = true, ["i heart reshape"] = true, ["reshape superfan"] = true
+             },
+             [14927228] = { -- War Room
+                 ["♞"] = true
+             }
+         },
+         users = { -- Lista UserID
+             3294804378, 93676120, 54087314, 81275825, 140837601, 1229486091, 46567801, 418086275, 29706395,
+             3717066084, 1424338327, 5046662686, 5046661126, 5046659439, 418199326, 1024216621, 1810535041,
+             63238912, 111250044, 63315426, 730176906, 141193516, 194512073, 193945439, 412741116, 195538733,
+             102045519, 955294, 957835150, 25689921, 366613818, 281593651, 455275714, 208929505, 96783330,
+             156152502, 93281166, 959606619, 142821118, 632886139, 175931803, 122209625, 278097946, 142989311,
+             1517131734, 446849296, 87189764, 67180844, 9212846, 47352513, 48058122, 155413858, 10497435,
+             513615792, 55893752, 55476024, 151691292, 136584758, 16983447, 3111449, 94693025, 271400893,
+             5005262660, 295331237, 64489098, 244844600, 114332275, 25048901, 69262878, 50801509, 92504899,
+             42066711, 50585425, 31365111, 166406495, 2457253857, 29761878, 21831137, 948293345, 439942262,
+             38578487, 1163048, 7713309208, 3659305297, 15598614, 34616594, 626833004, 198610386, 153835477,
+             3923114296, 3937697838, 102146039, 119861460, 371665775, 1206543842, 93428604, 1863173316, 90814576,
+             374665997, 423005063, 140172831, 42662179, 9066859, 438805620, 14855669, 727189337, 1871290386,
+             608073286
+         }
+     }
+
+     -- Funkcje pomocnicze
+     local function hasTracker(player)
+         if not player or not player:IsA("Player") then return false, nil end
+         local children = player:GetChildren()
+         for i = 1, #children do
+             local child = children[i]
+             if typeof(child.Name) == "string" and string.sub(child.Name, -8) == "Tracker$" then
+                 local trackedPlayerName = string.sub(child.Name, 1, -9)
+                 if Players:FindFirstChild(trackedPlayerName) then
+                     return true, trackedPlayerName
+                 end
+             end
+         end
+         return false, nil
+     end
+
+     local function isStaff(player)
+         if not player or not player:IsA("Player") then return false end
+
+         if staffPlayers.groups then
+             for groupID, roles in pairs(staffPlayers.groups) do
+                 local successRank, rank = pcall(function() return player:GetRankInGroup(groupID) end)
+                 if successRank and rank and rank > 0 then
+                     local successRole, roleName = pcall(function() return player:GetRoleInGroup(groupID) end)
+                     if successRole and roleName and roles[roleName] then
+                         return true, roleName, groupID
+                     end
+                 end
+             end
+         end
+
+         if staffPlayers.users then
+             for i = 1, #staffPlayers.users do
+                 if player.UserId == staffPlayers.users[i] then
+                     return true, "UserID", player.UserId
+                 end
+             end
+         end
+
+         return false
+     end
+
+     local function kickformat(staffInfo)
+         if not staffInfo or not staffInfo.Staff then return "Staff detected." end
+         local message = "Staff detected:\n"
+         for i, staff in ipairs(staffInfo.Staff) do
+             local idType = "Role"
+             local idValue = staff.Role or "Unknown"
+             if staff.Role == "UserID" then
+                 idType = "UserID"
+                 idValue = staff.GroupId or "Unknown"
+             elseif staff.Role == "Tracker User" then
+                 idType = "Tracker"
+                 idValue = "Active"
+             end
+
+             message = message .. string.format(
+                 "- %s (%s: %s)%s",
+                 staff.Name or "Unknown",
+                 idType,
+                 idValue,
+                 staff.TrackedPlayer and " - Tracking: " .. staff.TrackedPlayer or ""
+             )
+             if i < #staffInfo.Staff then
+                 message = message .. "\n"
+             end
+         end
+         return message
+     end
+
+     local function kickWithStaffInfo(staffInfo)
+         local kickMsg = kickformat(staffInfo)
+         if LocalPlayer then
+             LocalPlayer:Kick("Staff joined\n\n" .. kickMsg)
+         end
+     end
+
+     local function checkCurrentStaff()
+         local staffFound = {}
+         local currentPlayers = Players:GetPlayers()
+         for i = 1, #currentPlayers do
+             local player = currentPlayers[i]
+             if player ~= LocalPlayer then
+                 local isPlayerStaff, role, groupID = isStaff(player)
+                 local hasTrackers, trackedPlayer = hasTracker(player)
+
+                 if isPlayerStaff or hasTrackers then
+                     table.insert(staffFound, {
+                         Name = player.Name,
+                         Role = hasTrackers and "Tracker User" or role,
+                         GroupId = groupID,
+                         TrackedPlayer = trackedPlayer
+                     })
+                 end
+             end
+         end
+
+         if #staffFound > 0 then
+             kickWithStaffInfo({Staff = staffFound})
+             return true
+         end
+         return false
+     end
+
+     local function onPlayerJoining(player)
+         if not AdminCheck_Enabled then return end
+
+         local isPlayerStaff, role, groupID = isStaff(player)
+         local hasTrackers, trackedPlayer = hasTracker(player)
+
+         if isPlayerStaff or hasTrackers then
+             local staffInfo = {
+                 Staff = {{
+                     Name = player.Name,
+                     Role = hasTrackers and "Tracker User" or role,
+                     GroupId = groupID,
+                     TrackedPlayer = trackedPlayer
+                 }}
+             }
+             kickWithStaffInfo(staffInfo)
+         end
+     end
+
+     local function AdminCheck_Enable()
+         if AdminCheck_Enabled then return end
+         AdminCheck_Enabled = true
+
+         print("Staff Detector Enabling...")
+
+         if AdminCheck_Connection then AdminCheck_Connection:Disconnect() end
+
+         AdminCheck_Connection = Players.PlayerAdded:Connect(onPlayerJoining)
+         print("Staff Detector Monitoring started.")
+
+         Fluent:Notify({Title = "Staff Detector", Content = "Enabled - Monitoring staff", Duration = 5})
+
+         task.spawn(function()
+             print("Staff Detector: Checking current players...")
+             local foundStaff = checkCurrentStaff()
+
+             if foundStaff then
+                 AdminCheck_Enabled = false
+                 warn("Staff Detector: Staff found. Kicked.")
+                 if AdminCheck_Connection then
+                     AdminCheck_Connection:Disconnect()
+                     AdminCheck_Connection = nil
+                 end
+             else
+                 print("Staff Detector: No staff found in current players.")
+             end
+         end)
+     end
+
+     local function AdminCheck_Disable()
+         if not AdminCheck_Enabled then return end
+         AdminCheck_Enabled = false
+
+         if AdminCheck_Connection then
+             AdminCheck_Connection:Disconnect()
+             AdminCheck_Connection = nil
+         end
+         print("Staff Detector Disabled.")
+         Fluent:Notify({Title = "Staff Detector", Content = "Disabled Caution", Duration = 2})
+     end
+
+     -- Conexión al toggle "StaffDetector"
+     Options.StaffDetector:OnChanged(function(value)
+         if value then
+             AdminCheck_Enable()
+         else
+             AdminCheck_Disable()
+         end
+     end)
+
+    Tabs.AutoFarm:AddToggle("AutoPickupMoney", {
+        Title = "Auto Pickup Money",
+        Default = false
+    })
+    -- ==================== Auto Pickup Money (tu lógica tal cual) ====================
+    local AutoPickupMoney_Enabled = false
+    local AutoPickupMoney_Connection = nil
+
+    local function AutoPickupMoney_Enable()
+        if AutoPickupMoney_Enabled then return end
+        AutoPickupMoney_Enabled = true
+
+        print("[AutoPickupMoney] Activado - Iniciando debug...")
+
+        local remote = game:GetService("ReplicatedStorage").Events:FindFirstChild("CZDPZUS")
+        local moneyfolder = game:GetService("Workspace").Filter:FindFirstChild("SpawnedBread")
+
+        print("[AutoPickupMoney] Remote encontrado:", remote ~= nil)
+        print("[AutoPickupMoney] Folder encontrado:", moneyfolder ~= nil)
+
+        if not remote then
+            warn("[AutoPickupMoney] ERROR: Remote 'CZDPZUS' no encontrado. Busca el nombre correcto en ReplicatedStorage.Events")
+            AutoPickupMoney_Enabled = false
+            return
+        end
+
+        if not moneyfolder then
+            warn("[AutoPickupMoney] ERROR: Folder 'SpawnedBread' no encontrado. Busca en workspace.Filter")
+            AutoPickupMoney_Enabled = false
+            return
+        end
+
+        print("[AutoPickupMoney] Todo OK - Iniciando loop...")
+
+        local canPickup = true
+        local startTick = tick()
+
+        AutoPickupMoney_Connection = game:GetService("RunService").RenderStepped:Connect(function()
+            if not AutoPickupMoney_Enabled then return end
+
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            local function GetMoney()
+                local maxdist = 25  -- Distancia de recogida
+                local closest = nil
+                local closestDist = math.huge
+
+                for _, a in pairs(moneyfolder:GetChildren()) do
+                    if a:IsA("Part") or a:IsA("MeshPart") then
+                        local getdist = (hrp.Position - a.Position).Magnitude
+                        if getdist < maxdist and getdist < closestDist then
+                            closestDist = getdist
+                            closest = a
+                        end
+                    end
+                end
+
+                print("[AutoPickupMoney] Objetos en folder:", #moneyfolder:GetChildren())
+                print("[AutoPickupMoney] Dinero más cercano a:", closestDist, "studs")
+                return closest
+            end
+
+            local foundmoney = GetMoney()
+            if foundmoney then
+                if canPickup then
+                    print("[AutoPickupMoney] Recogiendo dinero...")
+                    pcall(function()
+                        remote:FireServer(foundmoney)
+                    end)
+                    canPickup = false
+                    startTick = tick()
+                    print("[AutoPickupMoney] Pickup ejecutado - Cooldown iniciado")
+                end
+            end
+
+            if not canPickup and tick() - startTick >= 1 then
+                canPickup = true
+                print("[AutoPickupMoney] Cooldown terminado - Listo para siguiente")
+            end
+        end)
+
+        Fluent:Notify({Title = "Auto Pickup Money", Content = "Enabled - Searching...", Duration = 3})
+    end
+
+    local function AutoPickupMoney_Disable()
+        if not AutoPickupMoney_Enabled then return end
+        AutoPickupMoney_Enabled = false
+
+        if AutoPickupMoney_Connection then
+            AutoPickupMoney_Connection:Disconnect()
+            AutoPickupMoney_Connection = nil
+        end
+
+        print("[AutoPickupMoney] Desactivado")
+        Fluent:Notify({Title = "Auto Pickup Money", Content = "Disabled", Duration = 2})
+    end
+
+    -- Conexión al toggle que ya tenés
+    Options.AutoPickupMoney:OnChanged(function(value)
+        if value then
+            AutoPickupMoney_Enable()
+        else
+            AutoPickupMoney_Disable()
+        end
+    end)
+    
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │                          PLAYER                               │
+-- ╰───────────────────────────────────────────────────────────────
+do
+    -- Variables para Noclip
+    local Noclip_Connection = nil
+    local Noclip_Enabled = false
+    local originalCollisions = {}
+
+    local function Noclip_Enable()
+        if Noclip_Enabled then return end
+        Noclip_Enabled = true
+
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    originalCollisions[part] = true
+                    part.CanCollide = false
+                end
+            end
+        end
+
+        if not Noclip_Connection then
+            Noclip_Connection = RunService.RenderStepped:Connect(function()
+                if not Noclip_Enabled then return end
+                local char = LocalPlayer.Character
+                if char then
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end
+
+        Fluent:Notify({Title = "Noclip", Content = "Enabled", Duration = 2})
+    end
+
+    local function Noclip_Disable()
+        if not Noclip_Enabled then return end
+        Noclip_Enabled = false
+
+        if Noclip_Connection then
+            Noclip_Connection:Disconnect()
+            Noclip_Connection = nil
+        end
+
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and originalCollisions[part] then
+                    part.CanCollide = true
+                end
+            end
+        end
+
+        originalCollisions = {}
+        Fluent:Notify({Title = "Noclip", Content = "Disabled", Duration = 2})
+    end
+
+    -- Función auxiliar para CharStats (usada en Fake Down)
+    local function CharStats(plr)
+        local charStats = game:GetService("ReplicatedStorage"):FindFirstChild("CharStats")
+        return charStats and charStats:FindFirstChild(plr.Name)
+    end
+
+    Tabs.Player:AddSection("Player Mods")
+
+    Tabs.Player:AddSlider("PlayerFOV", {
+        Title = "FOV",
+        Default = 70,
+        Min = 70,
+        Max = 150,
+        Rounding = 0,
+        Callback = function(Value)
+            workspace.CurrentCamera.FieldOfView = Value
+            Fluent:Notify({Title = "FOV", Content = "Changed to " .. Value, Duration = 1.0})
+        end
+    })
+
+    Tabs.Player:AddSlider("CameraDistance", {
+        Title = "Camera distance",
+        Default = 15,
+        Min = 12,
+        Max = 500,
+        Rounding = 1,
+        Callback = function(val)
+            LocalPlayer.CameraMaxZoomDistance = val
+        end
+    })
+
+    local JumpConnection = nil
+    Tabs.Player:AddSlider("JumpHeight", {
+        Title = "Jump",
+        Default = 7.2,
+        Min = 7.10,
+        Max = 25,
+        Rounding = 1,
+        Callback = function(val)
+            if JumpConnection then
+                JumpConnection:Disconnect()
+                JumpConnection = nil
+            end
+            JumpConnection = RunService.RenderStepped:Connect(function()
+                if LocalPlayer.Character then
+                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        hum.UseJumpPower = false
+                        hum.JumpHeight = val
+                    end
+                end
+            end)
+            Fluent:Notify({Title = "Jump", Content = "Established in " .. val, Duration = 1.8})
+        end
+    })
+
+    Tabs.Player:AddSlider("Gravity", {
+        Title = "Gravity",
+        Default = workspace.Gravity,
+        Min = 0,
+        Max = 196,
+        Rounding = 0,
+        Callback = function(val)
+            workspace.Gravity = val
+            Fluent:Notify({Title = "Gravity", Content = "Changed to " .. val, Duration = 1.8})
+        end
+    })
+
+    local FlyConnection = nil
+    local FlyToggle = Tabs.Player:AddToggle("FlyEnabled", {Title = "Fly", Default = false})
+    FlyToggle:OnChanged(function(value)
+        local rs = game:GetService("ReplicatedStorage")
+        local event = rs:FindFirstChild("Events") and rs.Events:FindFirstChild("__RZDONL")
+        local flyspeed = 60
+
+        local function applyFly(hrp)
+            if not hrp then return end
+
+            if value then
+                if FlyConnection then
+                    FlyConnection:Disconnect()
+                    FlyConnection = nil
+                end
+
+                FlyConnection = RunService.RenderStepped:Connect(function()
+                    local move = Vector3.new(0, 0, 0)
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += workspace.CurrentCamera.CFrame.LookVector * flyspeed end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= workspace.CurrentCamera.CFrame.LookVector * flyspeed end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= workspace.CurrentCamera.CFrame.RightVector * flyspeed end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += workspace.CurrentCamera.CFrame.RightVector * flyspeed end
+                    hrp.Velocity = move
+                    if event then event:FireServer("__---r", Vector3.new(0, 0, 0), hrp.CFrame, false) end
+                end)
+            else
+                if FlyConnection then
+                    FlyConnection:Disconnect()
+                    FlyConnection = nil
+                end
+                hrp.Velocity = Vector3.new(0, 0, 0)
+                task.delay(0.05, function()
+                    if hrp and hrp.Parent then hrp.Velocity = Vector3.new(0, 0, 0) end
+                end)
+                if event then event:FireServer("__---r", Vector3.new(0, 0, 0), hrp.CFrame, false) end
+            end
+        end
+
+        local char = LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then applyFly(hrp) end
+        end
+
+        LocalPlayer.CharacterAdded:Connect(function(newchar)
+            task.wait(0.5)
+            local hrp = newchar:FindFirstChild("HumanoidRootPart")
+            if hrp and FlyToggle.Value then applyFly(hrp) end
+        end)
+
+        Fluent:Notify({Title = "Fly", Content = value and "Enabled" or "Disabled", Duration = 2})
+    end)
+    Tabs.Player:AddKeybind("FlyBind", {
+        Title = "Bind", Mode = "Toggle", Default = "V",
+        Callback = function(Value) Options.FlyEnabled:SetValue(Value) end,
+    })
+
+    local InfStaminaToggle = Tabs.Player:AddToggle("InfStamina", {Title = "Inf stamina", Default = false})
+    InfStaminaToggle:OnChanged(function(value)
+        if value then
+            if LocalPlayer.Character then
+                local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+                if hum and not hum:GetAttribute("ZSPRN_M") then
+                    hum:SetAttribute("ZSPRN_M", true)
+                end
+            end
+            LocalPlayer.CharacterAdded:Connect(function(char)
+                if value then
+                    task.wait(0.5)
+                    local hum = char:FindFirstChild("Humanoid")
+                    if hum then hum:SetAttribute("ZSPRN_M", true) end
+                end
+            end)
+        else
+            if LocalPlayer.Character then
+                local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+                if hum and hum:GetAttribute("ZSPRN_M") then
+                    hum:SetAttribute("ZSPRN_M", nil)
+                end
+            end
+        end
+        Fluent:Notify({Title = "Inf Stamina", Content = value and "Enabled" or "Disabled", Duration = 2})
+    end)
+    Tabs.Player:AddKeybind("InfStaminaKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.InfStamina:SetValue(Value)
+    end,
+})
+
+    local NoclipToggle = Tabs.Player:AddToggle("Noclip", {Title = "Noclip", Default = false})
+    NoclipToggle:OnChanged(function(value)
+        if value then Noclip_Enable() else Noclip_Disable() end
+    end)
+    Tabs.Player:AddKeybind("NoclipKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.Noclip:SetValue(Value)
+    end,
+})
+    local NoFallDamageToggle = Tabs.Player:AddToggle("NoFallDamage", {Title = "No fall damage", Default = false})
+    NoFallDamageToggle:OnChanged(function(value)
+        if value then
+            if LocalPlayer.Character then
+                local ff = Instance.new("ForceField")
+                ff.Parent = LocalPlayer.Character
+                ff.Visible = false
+            end
+            LocalPlayer.CharacterAdded:Connect(function(char)
+                if value and char then
+                    task.wait(0.5)
+                    local ff = Instance.new("ForceField")
+                    ff.Parent = char
+                    ff.Visible = false
+                end
+            end)
+        else
+            if LocalPlayer.Character then
+                for _, obj in pairs(LocalPlayer.Character:GetChildren()) do
+                    if obj:IsA("ForceField") and obj.Visible == false then
+                        obj:Destroy()
+                    end
+                end
+            end
+        end
+        Fluent:Notify({Title = "No fall damage", Content = value and "Enabled" or "Disabled", Duration = 2})
+    end)
+    Tabs.Player:AddKeybind("NoFallDamageKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.NoFallDamage:SetValue(Value)
+    end,
+})
+
+    -- Fake Down - lógica EXACTA que me pasaste
+    local FakeDownToggle = Tabs.Player:AddToggle("FakeDown", {Title = "Fake down", Default = false})
+    FakeDownToggle:OnChanged(function(value)
+        local stats = CharStats(LocalPlayer)
+        if stats and stats:FindFirstChild("Downed") then
+            local downed = stats.Downed
+            if value then
+                downed.Value = true
+                downed:GetPropertyChangedSignal("Value"):Connect(function()
+                    if FakeDownToggle.Value then
+                        downed.Value = true
+                    end
+                end)
+            else
+                downed.Value = false
+            end
+        end
+        Fluent:Notify({Title = "Fake Down", Content = value and "Enabled" or "Disabled", Duration = 2})
+    end)
+    Tabs.Player:AddKeybind("FakeDownKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.FakeDown:SetValue(Value)
+    end,
+})
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │                          VISUALS                              │
+-- ╰───────────────────────────────────────────────────────────────
+do
+    Tabs.Visuals:AddSection("Player ESP Settings")
+    Tabs.Visuals:AddToggle("BoxESP", {
+        Title = "Boxes",
+        Default = false
+    })
+    Tabs.Visuals:AddDropdown("BoxType", {
+        Title = "Box Type",
+        Values = {"2D", "Corner", "Bracket", "Octagon"},
+        Default = "2D"
+    })
+    Tabs.Visuals:AddColorpicker("BoxColor", {
+        Title = "Box Color",
+        Default = Color3.fromRGB(255, 255, 255)
+    })
+    Tabs.Visuals:AddSlider("BoxThickness", {
+        Title = "Thickness",
+        Default = 1,
+        Min = 1,
+        Max = 5,
+        Rounding = 1
+    })
+    Tabs.Visuals:AddSlider("BoxRounding", {
+        Title = "Rounding",
+        Default = 0,
+        Min = 0,
+        Max = 20,
+        Rounding = 0
+    })
+    Tabs.Visuals:AddSection("Fill Transparency Settings")
+    Tabs.Visuals:AddToggle("FillEnabled", {
+        Title = "Fill",
+        Default = false
+    })
+    Tabs.Visuals:AddColorpicker("FillColor", {
+        Title = "Fill Color",
+        Default = Color3.fromRGB(255, 0, 0)
+    })
+    Tabs.Visuals:AddSlider("FillTransparency", {
+        Title = "Transparency",
+        Default = 0.3,
+        Min = 0,
+        Max = 1,
+        Rounding = 2
+    })
+    -- ============================================
+    -- ESP DE JUGADORES (lógica completa del primer archivo)
+    -- ============================================
+    local function createESP(targetPlayer)
+        local lines = {
+            top = Drawing.new("Line"),
+            bottom = Drawing.new("Line"),
+            left = Drawing.new("Line"),
+            right = Drawing.new("Line")
+        }
+        
+        local corners = {}
+        for i = 1, 8 do
+            corners[i] = Drawing.new("Line")
+        end
+
+        local fill = Drawing.new("Square")
+        local nameTag = Drawing.new("Text")
+
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and targetPlayer ~= LocalPlayer then
+                local root = targetPlayer.Character.HumanoidRootPart
+                local head = targetPlayer.Character:FindFirstChild("Head")
+                if not head then return end
+
+                local rootPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(root.Position)
+                local dist = (workspace.CurrentCamera.CFrame.Position - root.Position).Magnitude
+
+                if onScreen and dist <= 5000 then
+                    local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    local legPos = workspace.CurrentCamera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                    
+                    local height = math.abs(headPos.Y - legPos.Y)
+                    local width = height / 1.5
+                    local x, y = rootPos.X - width / 2, rootPos.Y - height / 2
+
+                    local radius = math.min(Options.BoxRounding.Value, width/2, height/2)
+                    local color = Options.BoxColor.Value
+                    local thick = Options.BoxThickness.Value
+
+                    if Options.BoxESP.Value then
+                        if Options.BoxType.Value == "2D" then
+                            if radius > 0 then
+                                lines.top.From = Vector2.new(x + radius, y); lines.top.To = Vector2.new(x + width - radius, y)
+                                lines.bottom.From = Vector2.new(x + radius, y + height); lines.bottom.To = Vector2.new(x + width - radius, y + height)
+                                lines.left.From = Vector2.new(x, y + radius); lines.left.To = Vector2.new(x, y + height - radius)
+                                lines.right.From = Vector2.new(x + width, y + radius); lines.right.To = Vector2.new(x + width, y + height - radius)
+
+                                corners[1].From = Vector2.new(x, y + radius); corners[1].To = Vector2.new(x + radius * 0.3, y + radius * 0.3)
+                                corners[2].From = Vector2.new(x + radius * 0.3, y + radius * 0.3); corners[2].To = Vector2.new(x + radius, y)
+                                corners[3].From = Vector2.new(x + width - radius, y); corners[3].To = Vector2.new(x + width - radius * 0.3, y + radius * 0.3)
+                                corners[4].From = Vector2.new(x + width - radius * 0.3, y + radius * 0.3); corners[4].To = Vector2.new(x + width, y + radius)
+                                corners[5].From = Vector2.new(x, y + height - radius); corners[5].To = Vector2.new(x + radius * 0.3, y + height - radius * 0.3)
+                                corners[6].From = Vector2.new(x + radius * 0.3, y + height - radius * 0.3); corners[6].To = Vector2.new(x + radius, y + height)
+                                corners[7].From = Vector2.new(x + width - radius, y + height); corners[7].To = Vector2.new(x + width - radius * 0.3, y + height - radius * 0.3)
+                                corners[8].From = Vector2.new(x + width - radius * 0.3, y + height - radius * 0.3); corners[8].To = Vector2.new(x + width, y + height - radius)
+
+                                for _, l in pairs(lines) do l.Visible = true; l.Color = color; l.Thickness = thick end
+                                for _, c in pairs(corners) do c.Visible = true; c.Color = color; c.Thickness = thick end
+                            else
+                                lines.top.From = Vector2.new(x, y); lines.top.To = Vector2.new(x + width, y)
+                                lines.bottom.From = Vector2.new(x, y + height); lines.bottom.To = Vector2.new(x + width, y + height)
+                                lines.left.From = Vector2.new(x, y); lines.left.To = Vector2.new(x, y + height)
+                                lines.right.From = Vector2.new(x + width, y); lines.right.To = Vector2.new(x + width, y + height)
+
+                                for _, l in pairs(lines) do l.Visible = true; l.Color = color; l.Thickness = thick end
+                                for _, c in pairs(corners) do c.Visible = false end
+                            end
+                        elseif Options.BoxType.Value == "Corner" then
+                            for _, l in pairs(lines) do l.Visible = false end
+                            for i = 1, 8 do
+                                local c = corners[i]
+                                c.Visible = true; c.Color = color; c.Thickness = thick
+                                local length = width / 4
+                                if i == 1 then c.From = Vector2.new(x, y); c.To = Vector2.new(x + length, y) end
+                                if i == 2 then c.From = Vector2.new(x, y); c.To = Vector2.new(x, y + length) end
+                                if i == 3 then c.From = Vector2.new(x + width, y); c.To = Vector2.new(x + width - length, y) end
+                                if i == 4 then c.From = Vector2.new(x + width, y); c.To = Vector2.new(x + width, y + length) end
+                                if i == 5 then c.From = Vector2.new(x, y + height); c.To = Vector2.new(x + length, y + height) end
+                                if i == 6 then c.From = Vector2.new(x, y + height); c.To = Vector2.new(x, y + height - length) end
+                                if i == 7 then c.From = Vector2.new(x + width, y + height); c.To = Vector2.new(x + width - length, y + height) end
+                                if i == 8 then c.From = Vector2.new(x + width, y + height); c.To = Vector2.new(x + width, y + height - length) end
+                            end
+                        elseif Options.BoxType.Value == "Bracket" then
+                            for _, l in pairs(lines) do l.Visible = false end
+                            for i = 1, 8 do
+                                local c = corners[i]
+                                c.Visible = true; c.Color = color; c.Thickness = thick
+                                local bSize = width / 5
+                                if i == 1 then c.From = Vector2.new(x, y); c.To = Vector2.new(x + bSize, y) end
+                                if i == 2 then c.From = Vector2.new(x, y); c.To = Vector2.new(x, y + height) end
+                                if i == 3 then c.From = Vector2.new(x, y + height); c.To = Vector2.new(x + bSize, y + height) end
+                                if i == 4 then c.From = Vector2.new(x + width, y); c.To = Vector2.new(x + width - bSize, y) end
+                                if i == 5 then c.From = Vector2.new(x + width, y); c.To = Vector2.new(x + width, y + height) end
+                                if i == 6 then c.From = Vector2.new(x + width, y + height); c.To = Vector2.new(x + width - bSize, y + height) end
+                                if i > 6 then c.Visible = false end
+                            end
+                        elseif Options.BoxType.Value == "Octagon" then
+                            local cut = math.min(width, height) / 4
+                            for _, l in pairs(lines) do l.Visible = false end
+                            for i = 1, 8 do
+                                local c = corners[i]
+                                c.Visible = true; c.Color = color; c.Thickness = thick
+                                if i == 1 then c.From = Vector2.new(x + cut, y); c.To = Vector2.new(x + width - cut, y) end
+                                if i == 2 then c.From = Vector2.new(x + width, y + cut); c.To = Vector2.new(x + width, y + height - cut) end
+                                if i == 3 then c.From = Vector2.new(x + width - cut, y + height); c.To = Vector2.new(x + cut, y + height) end
+                                if i == 4 then c.From = Vector2.new(x, y + height - cut); c.To = Vector2.new(x, y + cut) end
+                                if i == 5 then c.From = Vector2.new(x + cut, y); c.To = Vector2.new(x, y + cut) end
+                                if i == 6 then c.From = Vector2.new(x + width - cut, y); c.To = Vector2.new(x + width, y + cut) end
+                                if i == 7 then c.From = Vector2.new(x + width, y + height - cut); c.To = Vector2.new(x + width - cut, y + height) end
+                                if i == 8 then c.From = Vector2.new(x, y + height - cut); c.To = Vector2.new(x + cut, y + height) end
+                            end
+                        end
+
+                        fill.Visible = Options.FillEnabled.Value
+                        if fill.Visible then
+                            fill.Size = Vector2.new(width, height)
+                            fill.Position = Vector2.new(x, y)
+                            fill.Color = Options.FillColor.Value
+                            fill.Transparency = Options.FillTransparency.Value
+                            fill.Filled = true
+                        end
+
+                        nameTag.Visible = Options.ShowNames.Value
+                        if nameTag.Visible then
+                            nameTag.Text = targetPlayer.Name .. " [" .. math.floor(dist) .. "m]"
+                            nameTag.Position = Vector2.new(x + width / 2, y - 15)
+                            nameTag.Color = Color3.new(1, 1, 1)
+                            nameTag.Outline = true
+                            nameTag.Center = true
+                            nameTag.Size = 13
+                        end
+                    else
+                        for _, l in pairs(lines) do l.Visible = false end
+                        for _, c in pairs(corners) do c.Visible = false end
+                        fill.Visible = false
+                        nameTag.Visible = false
+                    end
+                else
+                    for _, l in pairs(lines) do l.Visible = false end
+                    for _, c in pairs(corners) do c.Visible = false end
+                    fill.Visible = false
+                    nameTag.Visible = false
+                end
+            else
+                if not targetPlayer.Parent then
+                    for _, l in pairs(lines) do l:Remove() end
+                    for _, c in pairs(corners) do c:Remove() end
+                    fill:Remove()
+                    nameTag:Remove()
+                    connection:Disconnect()
+                end
+            end
+        end)
+    end
+
+    local function createNameESP(targetPlayer)
+        local nameTag = Drawing.new("Text")
+        nameTag.Visible = false
+        nameTag.Center = true
+        nameTag.Outline = true
+        nameTag.Size = 13
+        nameTag.Color = Color3.new(1, 1, 1)
+
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            nameTag.Visible = false
+            nameTag.Position = Vector2.new(-1000, -1000)
+
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") and targetPlayer ~= LocalPlayer then
+                local head = targetPlayer.Character.Head
+                local hum = targetPlayer.Character:FindFirstChild("Humanoid")
+                local headPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
+                local dist = (workspace.CurrentCamera.CFrame.Position - head.Position).Magnitude
+
+                if onScreen and Options.ShowNames.Value and dist <= 5000 then
+                    local content = targetPlayer.Name
+                    
+                    if Options.ShowDistance.Value then
+                        content = content .. string.format(" [%dm]", math.floor(dist))
+                    end
+                    
+                    if Options.ShowHealth.Value and hum then
+                        content = content .. string.format(" (%d HP)", math.floor(hum.Health))
+                    end
+
+                    nameTag.Text = content
+                    nameTag.Position = Vector2.new(headPos.X, headPos.Y)
+                    nameTag.Visible = true
+                end
+            elseif not targetPlayer.Parent then
+                nameTag:Remove()
+                connection:Disconnect()
+            end
+        end)
+    end
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            createESP(v)
+            createNameESP(v)
+        end
+    end
+
+    Players.PlayerAdded:Connect(function(v)
+        if v ~= LocalPlayer then
+            createESP(v)
+            createNameESP(v)
+        end
+    end)
+
+    -- ============================================
+    -- SAFE ESP (lógica del segundo archivo "nexo free.lua")
+    -- ============================================
+    local BredMakurz_Enabled = false
+    local bredMakurzConnection = nil
+
+    local function formatName(name)
+        name = string.gsub(name, "([a-z])([A-Z])", "%1 %2")
+        local underscoreIndex = string.find(name, "_")
+        if underscoreIndex then
+            name = string.sub(name, 1, underscoreIndex - 1)
+        end
+        return name
+    end
+
+    local function ApplyBredMakurzModification()
+        local bredMakurzFolder = workspace.Map:FindFirstChild("BredMakurz")
+        if not bredMakurzFolder then return end
+
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+        local playerPosition = character.HumanoidRootPart.Position
+
+        for _, v in pairs(bredMakurzFolder:GetChildren()) do
+            local objectPosition
+            if v.PrimaryPart and v.PrimaryPart:IsA("BasePart") then
+                objectPosition = v.PrimaryPart.Position
+            else
+                local part = v:FindFirstChildOfClass("BasePart")
+                if part then
+                    objectPosition = part.Position
+                else
+                    continue
+                end
+            end
+
+            local distance = (objectPosition - playerPosition).Magnitude
+            local existingGui = v:FindFirstChild("Ahh")
+
+            if distance <= 200 then
+                if not existingGui then
+                    local gui = Instance.new('BillboardGui', v)
+                    gui.Name = "Ahh"
+                    gui.AlwaysOnTop = true
+                    gui.Size = UDim2.new(8, 0, 4, 0)
+                    gui.MaxDistance = 200
+
+                    local textLabel = Instance.new('TextLabel', gui)
+                    textLabel.Size = UDim2.new(1, 0, 1, 0)
+                    textLabel.BackgroundTransparency = 1
+                    textLabel.Font = Enum.Font.SourceSansBold
+                    textLabel.TextScaled = false
+                    textLabel.TextSize = 15
+
+                    textLabel.Text = formatName(v.Name)
+                    gui.Adornee = v
+
+                    local values = v:FindFirstChild("Values")
+                    local brokenValue = values and values:FindFirstChild("Broken")
+                    if brokenValue then
+                        if brokenValue.Value ~= false then
+                            textLabel.TextColor3 = Color3.new(1, 0, 0)
+                        else
+                            textLabel.TextColor3 = Color3.new(0, 1, 0)
+                        end
+
+                        brokenValue:GetPropertyChangedSignal("Value"):Connect(function()
+                            if brokenValue.Value ~= false then
+                                textLabel.TextColor3 = Color3.new(1, 0, 0)
+                            else
+                                textLabel.TextColor3 = Color3.new(0, 1, 0)
+                            end
+                        end)
+                    else
+                        textLabel.TextColor3 = Color3.new(0, 1, 0)
+                    end
+                end
+            elseif existingGui then
+                existingGui:Destroy()
+            end
+        end
+    end
+
+    local function BredMakurz_Enable()
+        if BredMakurz_Enabled then return end
+        BredMakurz_Enabled = true
+
+        bredMakurzConnection = RunService.Heartbeat:Connect(function()
+            ApplyBredMakurzModification()
+        end)
+    end
+
+    local function BredMakurz_Disable()
+        if not BredMakurz_Enabled then return end
+        BredMakurz_Enabled = false
+
+        if bredMakurzConnection then
+            bredMakurzConnection:Disconnect()
+            bredMakurzConnection = nil
+        end
+
+        local bredMakurzFolder = workspace.Map:FindFirstChild("BredMakurz")
+        if bredMakurzFolder then
+            for _, v in pairs(bredMakurzFolder:GetChildren()) do
+                pcall(function()
+                    if v:FindFirstChild("Ahh") then
+                        v.Ahh:Destroy()
+                    end
+                end)
+            end
+        end
+    end
+
+    -- Toggle y bind para Safe ESP
+    Tabs.Visuals:AddToggle("SafeESP", {
+        Title = "Safe ESP",
+        Default = false
+    }):OnChanged(function(value)
+        if value then
+            BredMakurz_Enable()
+        else
+            BredMakurz_Disable()
+        end
+    end)
+
+    Tabs.Visuals:AddKeybind("SafeESPKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.SafeESP:SetValue(Value)
+    end,
+})
+    -- FullBright (sacado del otro archivo y agregado al final)
+    Tabs.Visuals:AddSection("FullBright")
+    Tabs.Visuals:AddToggle("FullBright", {
+        Title = "FullBright",
+        Default = false
+    }):OnChanged(function(value)
+        if value then
+            game.Lighting.Brightness = 2
+            game.Lighting.ClockTime = 14
+            game.Lighting.FogEnd = 100000
+            game.Lighting.GlobalShadows = false
+            Fluent:Notify({
+                Title = "FullBright",
+                Content = "Enabled",
+                Duration = 2
+            })
+        else
+            game.Lighting.Brightness = 1
+            game.Lighting.ClockTime = 0
+            game.Lighting.FogEnd = 100
+            game.Lighting.GlobalShadows = true
+            Fluent:Notify({
+                Title = "FullBright",
+                Content = "Disabled",
+                Duration = 2
+            })
+        end
+    end)
+
+    Tabs.Visuals:AddKeybind("FullBrightKey", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.FullBright:SetValue(Value)
+    end,
+})
+end
+
+
+
+-- ╭───────────────────────────────────────────────────────────────
+-- │                         AUTOFARM                              │
+-- ╰───────────────────────────────────────────────────────────────
+do
+    -- Variables de tu lógica original
+    local autofarmEnabled = false
+    local autofarmCooldown = false
+    local ignoredSafes = {}
+    local pingThreshold = 100
+    local isPingHigh = false
+
+    -- CoolDowns y Settings (de tu script)
+    local CoolDowns = { AutoPickUps = { MoneyCooldown = false } }
+    local Settings = { IsDead = false }
+
+    -- Función para checkear ping
+    local function getPing()
+        local ping = LocalPlayer:GetNetworkPing()
+        return ping * 1000
+    end
+
+    -- Coroutine para ping constante
+    task.spawn(function()
+        while task.wait(5) do
+            local ping = getPing()
+            isPingHigh = ping > pingThreshold
+        end
+    end)
+
+    -- ==================== Shadow Mode (Invisibility) ====================
+    local Shadow_Active = false
+    local Shadow_Usable = true
+
+    do
+        repeat task.wait() until game:IsLoaded()
+
+        local svc_ref = cloneref or function(...) return ... end
+
+        local GS = setmetatable({}, {
+            __index = function(_, k)
+                return svc_ref(game:GetService(k))
+            end
+        })
+
+        local P = GS.Players.LocalPlayer
+        local Char = P.Character or P.CharacterAdded:Wait()
+        local HMND = nil
+        local HRP = nil
+
+        local function RefreshCharRefs()
+            Char = P.Character
+            if Char then
+                HRP = Char:FindFirstChild("HumanoidRootPart")
+                HMND = Char:FindFirstChildOfClass("Humanoid")
+            else
+                HRP = nil
+                HMND = nil
+            end
+        end
+
+        RefreshCharRefs()
+
+        local AnimTrack_Cache = nil
+        local CamoAnim = Instance.new("Animation")
+        CamoAnim.AnimationId = "rbxassetid://215384594"
+
+        local RS = GS.RunService
+        local UpdateFrame = RS.Heartbeat
+        local WaitRender = RS.RenderStepped
+
+        local CoreGS = GS.CoreGui
+        local StartGS = GS.StarterGui
+
+        local HUD = Instance.new("ScreenGui")
+        HUD.Name = "ShadowWarningHUD"
+        HUD.Parent = CoreGS
+        HUD.ResetOnSpawn = false
+        HUD.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+        local WarningText = Instance.new("TextLabel", HUD)
+        WarningText.Text = "⚠️You are visible⚠️"
+        WarningText.Visible = false
+        WarningText.Size = UDim2.new(0, 200, 0, 30)
+        WarningText.Position = UDim2.new(0.5, -100, 0.85, 0)
+        WarningText.BackgroundTransparency = 1
+        WarningText.Font = Enum.Font.GothamSemibold
+        WarningText.TextSize = 24
+        WarningText.TextColor3 = Color3.fromRGB(255, 255, 0)
+        WarningText.TextStrokeTransparency = 0.5
+        WarningText.ZIndex = 10
+
+        if Char and not Char:FindFirstChild("Torso") then
+            pcall(function()
+                StartGS:SetCore("SendNotification", {
+                    Title = "Shadow Mode FAILED",
+                    Text = "Feature requires R6 Avatar.",
+                    Duration = 5,
+                })
+            end)
+            Shadow_Usable = false
+        end
+
+        local function CheckGrounded()
+            return HMND and HMND:IsDescendantOf(workspace) and HMND.FloorMaterial ~= Enum.Material.Air
+        end
+
+        local function CacheAnimTrack()
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            if HMND then
+                local success, result = pcall(function()
+                    return HMND:LoadAnimation(CamoAnim)
+                end)
+                if success then
+                    AnimTrack_Cache = result
+                    AnimTrack_Cache.Priority = Enum.AnimationPriority.Action4
+                else
+                    AnimTrack_Cache = nil
+                end
+            else
+                AnimTrack_Cache = nil
+            end
+        end
+
+        local function DeactivateShadow()
+            if not Shadow_Active then return end
+            Shadow_Active = false
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            if HMND then
+                workspace.CurrentCamera.CameraSubject = HMND
+            end
+
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Transparency == 0.5 then
+                        v.Transparency = 0
+                    end
+                end
+            end
+            
+            WarningText.Visible = false
+        end
+
+        local function ActivateShadow()
+            if Shadow_Active or not Shadow_Usable then return end
+
+            RefreshCharRefs()
+            if not Char or not HMND or not HRP then return end
+            if not Char:FindFirstChild("Torso") then
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode FAILED", Text = "Feature requires R6 Avatar.", Duration = 5}) end)
+                return
+            end
+
+            Shadow_Active = true
+            workspace.CurrentCamera.CameraSubject = HRP
+
+            CacheAnimTrack()
+        end
+
+        local function ShadowStep(deltaTime)
+            if not Char or not HMND or not HRP or not HMND:IsDescendantOf(workspace) or HMND.Health <= 0 then
+                WarningText.Visible = false
+                return
+            end
+
+            WarningText.Visible = not CheckGrounded()
+
+            local walk_speed = 12
+            if HMND.MoveDirection.Magnitude > 0 then
+                local velocity_offset = HMND.MoveDirection * walk_speed * deltaTime
+                HRP.CFrame = HRP.CFrame + velocity_offset
+            end
+
+            local InitialCFrame = HRP.CFrame
+            local InitialCamOffset = HMND.CameraOffset
+
+            local _, yaw_angle = workspace.CurrentCamera.CFrame:ToOrientation()
+            HRP.CFrame = CFrame.new(HRP.CFrame.Position) * CFrame.fromOrientation(0, yaw_angle, 0)
+            HRP.CFrame = HRP.CFrame * CFrame.Angles(math.rad(90), 0, 0)
+            HMND.CameraOffset = Vector3.new(0, 1.44, 0)
+
+            if AnimTrack_Cache then
+                local successPlay = pcall(function()
+                    if not AnimTrack_Cache.IsPlaying then
+                        AnimTrack_Cache:Play()
+                    end
+                    AnimTrack_Cache:AdjustSpeed(0)
+                    AnimTrack_Cache.TimePosition = 0.3
+                end)
+                if not successPlay then
+                    CacheAnimTrack()
+                end
+            elseif HMND and HMND.Health > 0 then
+                CacheAnimTrack()
+            end
+
+            WaitRender:Wait()
+
+            if HMND and HMND:IsDescendantOf(workspace) then
+                HMND.CameraOffset = InitialCamOffset
+            end
+            if HRP and HRP:IsDescendantOf(workspace) then
+                HRP.CFrame = InitialCFrame
+            end
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            if HRP and HRP:IsDescendantOf(workspace) then
+                local LookVec = workspace.CurrentCamera.CFrame.LookVector
+                local FlatLook = Vector3.new(LookVec.X, 0, LookVec.Z).Unit
+                if FlatLook.Magnitude > 0.1 then
+                    local FinalCFrame = CFrame.new(HRP.Position, HRP.Position + FlatLook)
+                    HRP.CFrame = FinalCFrame
+                end
+            end
+
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Transparency ~= 1 then
+                        v.Transparency = 0.5
+                    end
+                end
+            end
+        end
+
+        UpdateFrame:Connect(function(deltaTime)
+            if not Shadow_Active or not Shadow_Usable then
+                if not Shadow_Active and Char then
+                    for _, v in pairs(Char:GetDescendants()) do
+                        if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
+                    end
+                end
+                WarningText.Visible = false
+                return
+            end
+            
+            ShadowStep(deltaTime)
+        end)
+
+        P.CharacterAdded:Connect(function(NewCharacter)
+            if Shadow_Active then DeactivateShadow() end
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+
+            task.wait()
+
+            RefreshCharRefs()
+
+            if not HMND then
+                task.wait(0.5)
+                RefreshCharRefs()
+                if not HMND then
+                    Shadow_Usable = false
+                    if Shadow_Active then DeactivateShadow() end
+                    pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Error", Text = "Could not verify character type.", Duration = 5}) end)
+                    return
+                end
+            end
+
+            if HMND.RigType ~= Enum.HumanoidRigType.R6 then
+                Shadow_Usable = false
+                if Shadow_Active then DeactivateShadow() end
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Warning", Text = "Non-R6 Avatar detected (".. tostring(HMND.RigType) .."). Disabled.", Duration = 5}) end)
+                return
+            else
+                Shadow_Usable = true
+            end
+
+            -- Reactivar Shadow si AutoFarm está ON
+            if autofarmEnabled then
+                task.wait(1.5)
+                ActivateShadow()
+            end
+        end)
+
+        P.CharacterRemoving:Connect(function(OldCharacter)
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            WarningText.Visible = false
+        end)
+
+        _G.IsShadowActive = function() return Shadow_Active end
+        _G.ActivateShadow = ActivateShadow
+        _G.DeactivateShadow = DeactivateShadow
+    end
+
+    -- ==================== Bread Collector (Auto Pickup Money) ====================
+    local Collector_Enabled = false
+    local Collector_Signal = nil
+
+    local function Collector_CoreLogic()
+        local RS_S = RunService
+        local RS_Rep = game:GetService("ReplicatedStorage")
+        local WS = game:GetService("Workspace")
+
+        local function RunCollectorLogic()
+            if not Collector_Enabled or Settings.IsDead then return end
+
+            local breadContainer = WS.Filter:FindFirstChild("SpawnedBread")
+            local pickupRemote = RS_Rep.Events:FindFirstChild("CZDPZUS")
+
+            if not breadContainer then
+                warn("BreadCollector: SpawnedBread folder missing.")
+                return
+            end
+            if not pickupRemote then
+                warn("BreadCollector: Pickup RemoteEvent missing.")
+                return
+            end
+
+            local p_char = LocalPlayer.Character
+            local root_part = p_char and p_char:FindFirstChild("HumanoidRootPart")
+
+            if not root_part or CoolDowns.AutoPickUps.MoneyCooldown then return end
+
+            local current_pos = root_part.Position
+            for _, item in ipairs(breadContainer:GetChildren()) do
+                local dist_sq = (current_pos - item.Position).Magnitude^2
+                if dist_sq < 400 and not CoolDowns.AutoPickUps.MoneyCooldown then
+                    CoolDowns.AutoPickUps.MoneyCooldown = true
+                    
+                    pcall(function()
+                        pickupRemote:FireServer(item)
+                    end)
+                    
+                    task.wait(1.1)
+                    
+                    CoolDowns.AutoPickUps.MoneyCooldown = false
+                    break
+                end
+            end
+        end
+
+        Collector_Signal = RS_S.RenderStepped:Connect(RunCollectorLogic)
+    end
+
+    local function Collector_Activate()
+        if Collector_Enabled then return end
+        Collector_Enabled = true
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        Collector_CoreLogic()
+    end
+
+    local function Collector_Deactivate()
+        if not Collector_Enabled then return end
+        Collector_Enabled = false
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        if CoolDowns and CoolDowns.AutoPickUps then
+            CoolDowns.AutoPickUps.MoneyCooldown = false
+        end
+    end
+
+    -- ==================== Main AutoFarm Loop ====================
+    local noTargetCounter = 0
+
+    local function Autofarm_Enable()
+        if autofarmEnabled then return end
+        autofarmEnabled = true
+        
+        _G.ActivateShadow() -- Shadow Mode (Invisibility)
+        Collector_Activate() -- Auto Pickup Money
+        
+        Fluent:Notify({Title = "Invisibility", Content = "Enabled", Duration = 3})
+    end
+
+    local function Autofarm_Disable()
+        if not autofarmEnabled then return end
+        autofarmEnabled = false
+        
+        _G.DeactivateShadow()
+        Collector_Deactivate()
+        
+        Fluent:Notify({Title = "Invisibility", Content = "Disabled", Duration = 3})
+    end
+
+    -- Respawn automático al morir (solo si AutoFarm está ON)
+    task.spawn(function()
+        local deathRespawnEvent = game:GetService("ReplicatedStorage").Events:WaitForChild("DeathRespawn")
+        while task.wait() do
+            local char = LocalPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health <= 0 and autofarmEnabled then
+                    Settings.IsDead = true
+                    deathRespawnEvent:InvokeServer("KMG4R904")
+                    task.wait(2)
+                    Settings.IsDead = false
+                end
+            end
+        end
+    end)
+
+    -- Reactivar todo al respawn si AutoFarm está ON
+    LocalPlayer.CharacterAdded:Connect(function(character)
+        if not autofarmEnabled then return end
+
+        character:WaitForChild("HumanoidRootPart", 5)
+        task.wait(1.5)
+
+        autofarmCooldown = false
+        ignoredSafes = {}
+        
+        -- Reactivar Shadow y Collector automáticamente
+        _G.ActivateShadow()
+        Collector_Activate()
+        
+        Fluent:Notify({Title = "invisibility", Content = "Reactivated Invisibility Respawn", Duration = 2})
+    end)
+
+    -- UI Elements (toggle principal controla todo)
+    Tabs.AutoFarm:AddToggle("invisibility", {
+        Title = "Invisibility",
+        Default = false
+    }):OnChanged(function(value)
+        if value then
+            Autofarm_Enable()
+        else
+            Autofarm_Disable()
+        end
+    
+    end)
+    -- Agrega esto nuevo: la bind
+    Tabs.AutoFarm:AddKeybind("InvisibilityBind", {
+        Title = "Bind",
+        Mode = "Toggle",
+        Default = "None",  -- Puedes cambiar a "V" si querés un default
+        Callback = function(Value)
+            Options.invisibility:SetValue(Value)  -- Togglea el switch y ejecuta OnChanged
+        end,
+    })
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │                           MISC                                │
+-- ╰───────────────────────────────────────────────────────────────
+do
+    Tabs.Misc:AddSection("Doors")
+    --================== NEARBY DOOR INTERACTIONS (Open & Unlock) ==================--
+    local OpenNearbyDoors_Enabled   = false
+    local UnlockNearbyDoors_Enabled = false
+    local DoorInteraction_Coroutine  = nil
+
+    local function NearbyDoorInteraction_Loop()
+        while (OpenNearbyDoors_Enabled or UnlockNearbyDoors_Enabled) do
+            local waitTime = 0.25
+            local char = LocalPlayer.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
+
+            if not hrp or not hum or hum.Health <= 0 then
+                task.wait(waitTime * 2)
+                continue
+            end
+
+            local doorsFolder = workspace.Map:FindFirstChild("Doors")
+            if not doorsFolder then
+                warn("[Door Auto] No se encontró Workspace.Map.Doors → desactivando")
+                OpenNearbyDoors_Enabled   = false
+                UnlockNearbyDoors_Enabled = false
+                break
+            end
+
+            local playerPos  = hrp.Position
+            local checkRadius = 6
+
+            for _, door in ipairs(doorsFolder:GetChildren()) do
+                local doorBase = door:FindFirstChild("DoorBase")
+                local values   = door:FindFirstChild("Values")
+                local events   = door:FindFirstChild("Events")
+
+                if doorBase and values and events then
+                    if (playerPos - doorBase.Position).Magnitude <= checkRadius then
+                        local toggleEvent = events:FindFirstChild("Toggle")
+                        if not toggleEvent then continue end
+
+                        -- Auto Unlock
+                        if UnlockNearbyDoors_Enabled then
+                            local locked = values:FindFirstChild("Locked")
+                            local lockArg = door:FindFirstChild("Lock")
+                            if locked and lockArg and locked.Value == true then
+                                pcall(function()
+                                    toggleEvent:FireServer("Unlock", lockArg)
+                                end)
+                            end
+                        end
+
+                        -- Auto Open
+                        if OpenNearbyDoors_Enabled then
+                            local openVal = values:FindFirstChild("Open")
+                            local knob = door:FindFirstChild("Knob2") or door:FindFirstChild("Knob")
+                            if openVal and knob and openVal.Value == false then
+                                local isLocked = values:FindFirstChild("Locked")
+                                local canOpen = not isLocked or not isLocked.Value
+                                if canOpen then
+                                    pcall(function()
+                                        toggleEvent:FireServer("Open", knob)
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            task.wait(waitTime)
+        end
+        DoorInteraction_Coroutine = nil
+    end
+
+    local function ManageDoorLoop()
+        local shouldRun = OpenNearbyDoors_Enabled or UnlockNearbyDoors_Enabled
+        if shouldRun and not DoorInteraction_Coroutine then
+            DoorInteraction_Coroutine = task.spawn(NearbyDoorInteraction_Loop)
+        end
+    end
+
+    local function OpenDoors_Enable()
+        if OpenNearbyDoors_Enabled then return end
+        OpenNearbyDoors_Enabled = true
+        ManageDoorLoop()
+        Fluent:Notify({Title = "Auto Open Doors", Content = "Enabled", Duration = 2})
+    end
+
+    local function OpenDoors_Disable()
+        if not OpenNearbyDoors_Enabled then return end
+        OpenNearbyDoors_Enabled = false
+        ManageDoorLoop()
+        Fluent:Notify({Title = "Auto Open Doors", Content = "Disabled", Duration = 2})
+    end
+
+    local function UnlockDoors_Enable()
+        if UnlockNearbyDoors_Enabled then return end
+        UnlockNearbyDoors_Enabled = true
+        ManageDoorLoop()
+        Fluent:Notify({Title = "Auto Unlock Doors", Content = "Enabled", Duration = 2})
+    end
+
+    local function UnlockDoors_Disable()
+        if not UnlockNearbyDoors_Enabled then return end
+        UnlockNearbyDoors_Enabled = false
+        ManageDoorLoop()
+        Fluent:Notify({Title = "Auto Unlock Doors", Content = "Disabled", Duration = 2})
+    end
+
+    -- ── Toggles y Keybinds ───────────────────────────────────────────────
+    local toggleOpen = Tabs.Misc:AddToggle("AutoOpenDoors", {
+        Title = "Auto Open Doors",
+        Default = false
+    })
+    toggleOpen:OnChanged(function(v)
+        if v then OpenDoors_Enable() else OpenDoors_Disable() end
+    end)
+
+    Tabs.Misc:AddKeybind("AutoOpenDoorsBind", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.AutoOpenDoors:SetValue(Value)
+    end,
+})
+    local toggleUnlock = Tabs.Misc:AddToggle("AutoUnlockDoors", {
+        Title = "Auto Unlock Doors",
+        Default = false
+    })
+    toggleUnlock:OnChanged(function(v)
+        if v then UnlockDoors_Enable() else UnlockDoors_Disable() end
+    end)
+
+    Tabs.Misc:AddKeybind("AutoUnlockDoorsBind", {
+    Title = "Bind",
+    Mode = "Toggle",
+    Default = "None",
+    Callback = function(Value)
+        Options.AutoUnlockDoors:SetValue(Value)
+    end,
+})
+
+    -- ── Utilities ────────────────────────────────────────────────────────
+    Tabs.Misc:AddSection("Utilities")
+
+    Tabs.Misc:AddButton({
+        Title = "Rejoin",
+        Description = "Reconnect to the same server",
+        Callback = function()
+            Fluent:Notify({
+                Title = "Rejoin",
+                Content = "Reconnecting...",
+                Duration = 3
+            })
+
+            local TeleportService = game:GetService("TeleportService")
+            local Players = game:GetService("Players")
+            local LocalPlayer = Players.LocalPlayer
+
+            if #Players:GetPlayers() <= 1 then
+                -- Si estás solo → teleport normal al place
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            else
+                -- Si hay más jugadores → intenta volver al mismo JobId
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+            end
+        end
+    })
+
+    Tabs.Misc:AddButton({
+        Title = "Server Hop",
+        Description = "Join another server",
+        Callback = function()
+            Fluent:Notify({
+                Title = "Server Hop",
+                Content = "Looking for available server...",
+                Duration = 4
+            })
+
+            local HttpService = game:GetService("HttpService")
+            local TeleportService = game:GetService("TeleportService")
+            local LocalPlayer = game.Players.LocalPlayer
+
+            local success, servers = pcall(function()
+                return HttpService:JSONDecode(
+                    game:HttpGet(
+                        "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+                    )
+                )
+            end)
+
+            if not success or not servers or not servers.data then
+                Fluent:Notify({
+                    Title = "Server Hop",
+                    Content = "Error",
+                    Duration = 5
+                })
+                return
+            end
+
+            for _, server in ipairs(servers.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    Fluent:Notify({
+                        Title = "Server Hop",
+                        Content = "Joining server with " .. server.playing .. "/" .. server.maxPlayers .. " Players",
+                        Duration = 4
+                    })
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+                    return  -- salimos después de intentar el primer servidor válido
+                end
+            end
+
+            Fluent:Notify({
+                Title = "Server Hop",
+                Content = "No available servers with space were found",
+                Duration = 5
+            })
+        end
+    })
+
+    -- Si quieres dejar el botón de Scan Points (aunque está en Dev en tu ejemplo)
+    -- Puedes moverlo aquí o dejarlo en otra pestaña
+    -- Tabs.Misc:AddButton({...}) ...
+
+end
+-- ╭───────────────────────────────────────────────────────────────
+-- │ SETTINGS │
+-- ╰───────────────────────────────────────────────────────────────
+do
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+end
+Window:SelectTab(1)
