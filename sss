@@ -317,9 +317,8 @@ Tabs.Combat:AddSection("Aimbot & Extras")
         rainbowFOV = Value
     end)
 -- ───────────────────────────────────────────────────────────────
---     AIMBOT MÓVIL HOLD-TO-AIM V3 (MULTI-TOUCH + DISPARO)
+--     AIMBOT MÓVIL COMPLETO CORREGIDO (multi-touch + FOV centrado)
 -- ───────────────────────────────────────────────────────────────
--- REEMPLAZA EL BLOQUE ANTERIOR COMPLETO CON ESTE
 
 local MobileAimbot = {}
 MobileAimbot.Enabled = false
@@ -327,23 +326,23 @@ MobileAimbot.ConnectionLoop = nil
 MobileAimbot.ConnectionTouch = nil
 MobileAimbot.FOVCircle = nil
 MobileAimbot.LockedTarget = nil
-MobileAimbot.ActiveTouches = {}  -- Tabla para trackear toques DERECHA (multi-dedo)
+MobileAimbot.ActiveRightTouches = {}  -- IDs de toques en la derecha
 
 local function isMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 end
 
--- Contar toques activos en DERECHA
+-- Contar toques activos en la mitad derecha
 local function getRightTouchesCount()
     local count = 0
-    for _ in pairs(MobileAimbot.ActiveTouches) do
+    for _ in pairs(MobileAimbot.ActiveRightTouches) do
         count = count + 1
     end
     return count
 end
 
--- Crear/actualizar círculo FOV
-local function updateMobileFOVCircle()
+-- Crear / recrear el círculo FOV
+local function createOrUpdateFOVCircle()
     if MobileAimbot.FOVCircle then
         MobileAimbot.FOVCircle:Remove()
     end
@@ -353,20 +352,24 @@ local function updateMobileFOVCircle()
     MobileAimbot.FOVCircle = Drawing.new("Circle")
     MobileAimbot.FOVCircle.Thickness = 2
     MobileAimbot.FOVCircle.NumSides = 100
+    MobileAimbot.FOVCircle.Transparency = 1
+    MobileAimbot.FOVCircle.Filled = false
+    MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
     MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
     MobileAimbot.FOVCircle.Color = FOVSettings.Color or Color3.fromRGB(255, 255, 255)
-    MobileAimbot.FOVCircle.Transparency = 1
-    MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
-    MobileAimbot.FOVCircle.Filled = false
+    
+    -- Posición inicial centrada
+    local cam = workspace.CurrentCamera
+    MobileAimbot.FOVCircle.Position = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
 end
 
--- Detecta si el toque está en la mitad derecha
+-- Ver si el toque está en la mitad derecha
 local function isRightSideTouch(touchPos)
     local screenWidth = workspace.CurrentCamera.ViewportSize.X
     return touchPos.X > screenWidth * 0.5
 end
 
--- Encontrar mejor objetivo
+-- Encontrar el mejor objetivo dentro del FOV
 local function findBestTarget()
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         return nil
@@ -413,26 +416,31 @@ local function findBestTarget()
     return closest
 end
 
--- Loop principal (solo si hay toques en derecha)
+-- Loop principal
 local function mobileAimbotLoop(deltaTime)
     local rightTouches = getRightTouchesCount()
-    if not MobileAimbot.Enabled or rightTouches == 0 then return end
     
-    -- Actualizar FOV
+    -- Siempre actualizamos la posición del círculo (para que nunca se desplace)
     if MobileAimbot.FOVCircle then
-        local center = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+        local cam = workspace.CurrentCamera
+        local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+        
         MobileAimbot.FOVCircle.Position = center
+        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
+        MobileAimbot.FOVCircle.Visible = FOVSettings.Visible and MobileAimbot.Enabled
         
         if rainbowFOV then
             local hue = tick() % 3 / 3
             MobileAimbot.FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
+        else
+            MobileAimbot.FOVCircle.Color = FOVSettings.Color or Color3.fromRGB(255, 255, 255)
         end
-        
-        MobileAimbot.FOVCircle.Visible = FOVSettings.Visible
-        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
     end
     
-    -- Mantener lock (no cambia hasta que se libere completamente)
+    -- Si no hay toques en derecha → no apuntamos
+    if not MobileAimbot.Enabled or rightTouches == 0 then return end
+    
+    -- Lock objetivo (mantiene el mismo mientras haya toques)
     local targetPart = MobileAimbot.LockedTarget
     
     if not targetPart or not targetPart.Parent or not targetPart.Parent:FindFirstChildOfClass("Humanoid") then
@@ -443,23 +451,23 @@ local function mobileAimbotLoop(deltaTime)
     if targetPart and targetPart.Parent then
         local camera = workspace.CurrentCamera
         
-        -- Predicción
+        -- Predicción de movimiento
         local predictedPos = targetPart.Position
         local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
         if root then
             predictedPos = predictedPos + root.Velocity * 0.12
         end
         
-        -- Pantalla derecha
+        -- Apuntar con pantalla derecha (sin roll)
         local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos, Vector3.new(0, 1, 0))
         
-        -- Smooth agresivo
+        -- Smooth
         local baseSmooth = AimbotSettings.Sensitivity or 0.1
         local smooth = math.clamp(baseSmooth * 4, 0.2, 0.9)
         
         camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)
         
-        -- Snap cerca
+        -- Snap si muy cerca del centro
         local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
         local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
@@ -469,7 +477,7 @@ local function mobileAimbotLoop(deltaTime)
     end
 end
 
--- InputBegan: Agrega toque a la tabla
+-- InputBegan
 local function onInputBegan(input, gameProcessed)
     if not MobileAimbot.Enabled then return end
     if gameProcessed then return end
@@ -477,8 +485,8 @@ local function onInputBegan(input, gameProcessed)
     
     local touchPos = input.Position
     if isRightSideTouch(touchPos) then
-        local touchId = input.Id  -- ID único del dedo
-        MobileAimbot.ActiveTouches[touchId] = true
+        local touchId = input.Id
+        MobileAimbot.ActiveRightTouches[touchId] = true
         
         -- Si es el primer toque → lock objetivo
         if getRightTouchesCount() == 1 then
@@ -487,29 +495,31 @@ local function onInputBegan(input, gameProcessed)
     end
 end
 
--- InputEnded: Remueve toque de la tabla (solo desactiva si count==0)
+-- InputEnded
 local function onInputEnded(input, gameProcessed)
     if input.UserInputType ~= Enum.UserInputType.Touch then return end
     
     local touchId = input.Id
-    MobileAimbot.ActiveTouches[touchId] = nil
+    MobileAimbot.ActiveRightTouches[touchId] = nil
     
-    -- Solo libera lock si NO hay más toques en derecha
+    -- Solo libera lock si ya no hay toques en derecha
     if getRightTouchesCount() == 0 then
         MobileAimbot.LockedTarget = nil
     end
 end
 
--- Start/Stop
+-- Iniciar
 local function startMobileAimbot()
-    updateMobileFOVCircle()
+    createOrUpdateFOVCircle()
     
     MobileAimbot.ConnectionLoop = RunService.RenderStepped:Connect(mobileAimbotLoop)
+    
     MobileAimbot.ConnectionTouch = {}
     table.insert(MobileAimbot.ConnectionTouch, UserInputService.InputBegan:Connect(onInputBegan))
     table.insert(MobileAimbot.ConnectionTouch, UserInputService.InputEnded:Connect(onInputEnded))
 end
 
+-- Detener
 local function stopMobileAimbot()
     if MobileAimbot.ConnectionLoop then
         MobileAimbot.ConnectionLoop:Disconnect()
@@ -518,7 +528,7 @@ local function stopMobileAimbot()
     
     if MobileAimbot.ConnectionTouch then
         for _, conn in ipairs(MobileAimbot.ConnectionTouch) do
-            if conn then conn:Disconnect() end
+            conn:Disconnect()
         end
         MobileAimbot.ConnectionTouch = nil
     end
@@ -528,11 +538,11 @@ local function stopMobileAimbot()
         MobileAimbot.FOVCircle = nil
     end
     
-    MobileAimbot.ActiveTouches = {}
+    MobileAimbot.ActiveRightTouches = {}
     MobileAimbot.LockedTarget = nil
 end
 
--- Toggle
+-- Toggle principal (reemplaza el OnChanged de AimToggle)
 AimToggle:OnChanged(function(Value)
     AimbotSettings.Enabled = Value
     MobileAimbot.Enabled = Value
@@ -542,7 +552,7 @@ AimToggle:OnChanged(function(Value)
             startMobileAimbot()
             Fluent:Notify({
                 Title = "Aimbot Móvil",
-                Content = "Multi-touch OK! Hold derecha + dispara",
+                Content = "Mantén dedo en derecha para apuntar (multi-touch OK)",
                 Duration = 3.5
             })
         end
@@ -553,7 +563,7 @@ AimToggle:OnChanged(function(Value)
     Notify("Aimbot", Value)
 end)
 
--- FOV callbacks (mismos que antes)
+-- Actualizaciones de FOV (agrega o reemplaza estos)
 Options.FOVVisible:OnChanged(function(v)
     FOVSettings.Visible = v
     FOVSettings.Enabled = v
