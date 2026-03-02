@@ -1,4 +1,4 @@
--- Nexo v1.00 - GUI final con lógica integrada
+-- Nexos v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -41,104 +41,123 @@ Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 local Options = Fluent.Options
 -- ───────────────────────────────────────────────────────────────
---     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI - ESTILO CUADRADO
---     Cuadrado negro semi-transparente + N blanca + arrastrable
+--     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI (adaptado de VenomHub)
+--     N blanca + borde blanco + tamaño FIJO + drag + toggle real
 -- ───────────────────────────────────────────────────────────────
-
-local function isMobile()
-    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-end
-
 task.spawn(function()
-    if not isMobile() then return end
-    
-    task.wait(2)  -- Espera más tiempo para que Fluent cargue todo
-    
-    local MobileIconGui = Instance.new("ScreenGui")
-    MobileIconGui.Name = "NexoMobileIcon"
-    MobileIconGui.Parent = game:GetService("CoreGui")  -- Siempre visible
-    MobileIconGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    MobileIconGui.ResetOnSpawn = false
-    MobileIconGui.IgnoreGuiInset = true
-
-    local iconButton = Instance.new("TextButton")
-    iconButton.Size = UDim2.new(0, 60, 0, 60)
-    iconButton.Position = UDim2.new(1, -80, 1, -80)  -- esquina inferior derecha
-    iconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    iconButton.Text = "N"
-    iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    iconButton.TextSize = 40
-    iconButton.Font = Enum.Font.GothamBlack
-    iconButton.BorderSizePixel = 0
-    iconButton.BackgroundTransparency = 0.3
-    iconButton.TextStrokeTransparency = 0.8
-    iconButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    iconButton.Parent = MobileIconGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = iconButton
-
-    -- Toggle simple (busca la GUI de Fluent/Nexo y togglea Visible del frame principal)
-    iconButton.Activated:Connect(function()
-        local toggled = false
-        
-        -- Buscar GUI con "Nexo" o "Fluent"
-        local pg = LocalPlayer.PlayerGui
-        for _, gui in ipairs(pg:GetChildren()) do
-            if gui:IsA("ScreenGui") and (gui.Name:find("Nexo") or gui.Name:find("Fluent")) then
-                for _, frame in ipairs(gui:GetDescendants()) do
-                    if frame:IsA("Frame") and frame.Visible then
-                        frame.Visible = not frame.Visible
-                        toggled = true
-                        break
-                    end
-                end
-                if toggled then break end
-            end
-        end
-        
-        if not toggled then
-            Fluent:Notify({
-                Title = "Error",
-                Content = "No se pudo encontrar la GUI para minimizar. Prueba manual.",
-                Duration = 3
-            })
-        end
-    end)
-
-    -- Drag
-    local dragging = false
-    local dragStartPos = nil
-    local startPos = nil
-
-    iconButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStartPos = input.Position
-            startPos = iconButton.Position
-        end
-    end)
-
-    iconButton.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStartPos
-            iconButton.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-
-    iconButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    print("[Mobile Icon] Ícono cuadrado 'N' cargado y visible")
+local UIS = game:GetService("UserInputService")
+if not UIS.TouchEnabled then return end
+task.wait(1.2)  -- Espera a que Fluent cree la GUI
+local pg = game.Players.LocalPlayer.PlayerGui
+local cg = game:GetService("CoreGui")
+-- Buscar la ScreenGui de Nexo/Fluent (por título "Nexo v1.06")
+local nexoGui = nil
+local places = {pg, cg}
+for _, place in ipairs(places) do
+for _, gui in ipairs(place:GetChildren()) do
+if gui:IsA("ScreenGui") then
+-- Busca un TextLabel con "Nexo v1.06"
+for _, label in ipairs(gui:GetDescendants()) do
+if label:IsA("TextLabel") and label.Text:find("Nexo v1.06") then
+nexoGui = gui
+break
+end
+end
+if nexoGui then break end
+end
+end
+if nexoGui then break end
+end
+if not nexoGui then
+warn("[Mobile Icon] No se encontró la ScreenGui de Nexo. Revisa en Explorer.")
+return
+end
+-- Frame principal (busca el Frame con el título "Nexo v1.06" o el más grande)
+local mainFrame = nil
+for _, frame in ipairs(nexoGui:GetDescendants()) do
+if frame:IsA("Frame") and frame:FindFirstChild("Title") and frame.Title.Text:find("Nexo") then
+mainFrame = frame
+break
+end
+end
+if not mainFrame then
+-- Fallback: el primer Frame grande
+for _, frame in ipairs(nexoGui:GetDescendants()) do
+if frame:IsA("Frame") and frame.Size.X.Offset > 500 then
+mainFrame = frame
+break
+end
+end
+end
+if not mainFrame then
+warn("[Mobile Icon] No se encontró el MainFrame. Toggleando la ScreenGui completa.")
+mainFrame = nexoGui  -- Último recurso
+end
+local icon = Instance.new("TextButton")
+icon.Name = "MinIconN"
+icon.Size = UDim2.new(0, 45, 0, 45)          -- tamaño FIJO
+icon.Position = UDim2.new(0, 15, 1, -70)
+icon.AnchorPoint = Vector2.new(0, 1)
+icon.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
+Icon.BackgroundTransparency = 0.6
+icon.Text = ""
+icon.ZIndex = 12000
+icon.Parent = nexoGui  -- Dentro de la misma ScreenGui
+-- Círculo perfecto
+--local cr = Instance.new("UICorner")
+--cr.CornerRadius = UDim.new(1, 0)
+--cr.Parent = icon
+-- Borde BLANCO visible
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Thickness = 3
+stroke.Transparency = 0.6
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+stroke.Parent = icon
+-- Letra N en blanco
+local nLabel = Instance.new("TextLabel")
+nLabel.Size = UDim2.new(1, 0, 1, 0)
+nLabel.BackgroundTransparency = 0.6
+nLabel.Text = "N"
+nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+nLabel.TextScaled = true
+nLabel.Font = Enum.Font.GothamBlack
+nLabel.Parent = icon
+local minimized = false
+icon.Activated:Connect(function()
+minimized = not minimized
+mainFrame.Visible = not minimized
+-- Tamaño FIJO: no cambia nunca
+end)
+-- Arrastrable
+local dragging = false
+local dragStart = nil
+local startPos = nil
+icon.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.Touch then
+dragging = true
+dragStart = input.Position
+startPos = icon.Position
+end
+end)
+UIS.InputChanged:Connect(function(input)
+if dragging and input.UserInputType == Enum.UserInputType.Touch then
+local delta = input.Position - dragStart
+icon.Position = UDim2.new(
+startPos.X.Scale,
+startPos.X.Offset + delta.X,
+startPos.Y.Scale,
+startPos.Y.Offset + delta.Y
+)
+end
+end)
+icon.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.Touch then
+dragging = false
+end
+end)
+mainFrame.Visible = true
+print("[Mobile] Ícono con N blanca, borde blanco y tamaño FIJO cargado")
 end)
 -- ╭───────────────────────────────────────────────────────────────
 -- │                           COMBAT                              │
