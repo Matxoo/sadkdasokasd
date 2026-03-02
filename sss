@@ -1,4 +1,4 @@
--- Nexo v12.00 - GUI final con lógica integrada
+-- Nexo v1.00 - GUI final con lógica integrada
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -316,41 +316,34 @@ Tabs.Combat:AddSection("Aimbot & Extras")
     Tabs.Combat:AddToggle("FOVRainbow", { Title = "Rainbow FOV", Default = false }):OnChanged(function(Value)
         rainbowFOV = Value
     end)
--- ───────────────────────────────────────────────────────────────
---     AIMBOT MÓVIL V2 FINAL - LOCK FIJO + FOV INICIA EN 40
---     No cambia objetivo si alguien cruza | FOV inicia en 40
---     Respeta Head/Torso del dropdown | Slider AimFOV lo cambia
--- ───────────────────────────────────────────────────────────────
+-- AIMBOT MÓVIL MEJORADO V2 (FOV VISIBLE + PANTALLA DERECHA) --
+───────────────────────────────────────────────────────────────
+-- REEMPLAZA EL BLOQUE ANTERIOR COMPLETO CON ESTE (copia y pega encima)
 
 local MobileAimbot = {}
 MobileAimbot.Enabled = false
 MobileAimbot.Connection = nil
-MobileAimbot.FOVCircle = nil
-MobileAimbot.LockedTarget = nil   -- lock fijo hasta desactivar
+MobileAimbot.FOVCircle = nil -- Círculo FOV para móvil
 
 local function isMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 end
 
--- Crear/Actualizar círculo FOV (inicia siempre en 40 al activar)
+-- Crear/Actualizar círculo FOV para móvil (mismo que PC)
 local function updateMobileFOVCircle()
     if MobileAimbot.FOVCircle then
         MobileAimbot.FOVCircle:Remove()
     end
-    
     if not isMobile() then return end
     
     MobileAimbot.FOVCircle = Drawing.new("Circle")
     MobileAimbot.FOVCircle.Thickness = 2
     MobileAimbot.FOVCircle.NumSides = 100
-    MobileAimbot.FOVCircle.Radius = 40  -- inicia en 40 como pediste
+    MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 20          -- cambiado a 20
     MobileAimbot.FOVCircle.Color = FOVSettings.Color or Color3.fromRGB(255, 255, 255)
     MobileAimbot.FOVCircle.Transparency = 1
     MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
     MobileAimbot.FOVCircle.Filled = false
-    
-    local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
-    MobileAimbot.FOVCircle.Position = screenCenter
 end
 
 local function getClosestTarget()
@@ -373,12 +366,14 @@ local function getClosestTarget()
         local part = player.Character:FindFirstChild(AimbotSettings.LockPart or "Head")
         if not part then continue end
         
+        -- Raycast para visibilidad
         local direction = (part.Position - cameraPos)
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
         
         local result = workspace:Raycast(cameraPos, direction.Unit * 5000, raycastParams)
+        
         if result and result.Instance:IsDescendantOf(player.Character) then
             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
             if onScreen then
@@ -386,8 +381,8 @@ local function getClosestTarget()
                 local vectorToTarget = Vector2.new(screenPos.X, screenPos.Y) - screenCenter
                 local distance = vectorToTarget.Magnitude
                 
-                if distance <= (FOVSettings.Radius or 150) then
-                    local dot = 1 - (distance / (FOVSettings.Radius or 150))
+                if distance <= (FOVSettings.Radius or 20) then                    -- cambiado a 20
+                    local dot = 1 - (distance / (FOVSettings.Radius or 20))      -- cambiado a 20
                     if dot > bestDot then
                         bestDot = dot
                         closest = part
@@ -404,44 +399,46 @@ local function mobileAimbotLoop(deltaTime)
     if not MobileAimbot.Enabled then return end
     if not isMobile() then return end
     
-    -- Actualizar FOV centrado cada frame
+    -- Actualizar círculo FOV cada frame (centro pantalla)
     if MobileAimbot.FOVCircle then
         local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
         MobileAimbot.FOVCircle.Position = screenCenter
         
+        -- Rainbow si activado
         if rainbowFOV then
             local hue = tick() % 3 / 3
             MobileAimbot.FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
         end
         
         MobileAimbot.FOVCircle.Visible = FOVSettings.Visible or false
-        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 40  -- respeta slider, inicia en 40
+        MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 20          -- cambiado a 20
     end
     
-    -- Apuntar SOLO al objetivo lockeado (no busca nuevo cada frame)
-    local targetPart = MobileAimbot.LockedTarget
+    local targetPart = getClosestTarget()
+    
     if targetPart and targetPart.Parent then
         local camera = workspace.CurrentCamera
         
-        -- Predicción
-        local predictedPos = targetPart.Position
+        -- PREDICCIÓN
         local humanoid = targetPart.Parent:FindFirstChildOfClass("Humanoid")
+        local predictedPos = targetPart.Position
         if humanoid and humanoid.RootPart then
             predictedPos = predictedPos + humanoid.RootPart.Velocity * 0.1
         end
         
-        -- Apuntar sin roll
+        -- PANTALLA DERECHA: CFrame sin roll (up vector = Y global)
         local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos, Vector3.new(0, 1, 0))
         
-        -- Smooth rápido
+        -- SMOOTH RÁPIDO
         local baseSmooth = AimbotSettings.Sensitivity or 0.1
         local smooth = math.clamp(baseSmooth * 3, 0.15, 0.8)
         camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)
         
-        -- Anti-pega snap
+        -- ANTI-PEGA SNAP
         local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
         local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        
         if pixelDist < 20 then
             camera.CFrame = targetCFrame
         end
@@ -451,11 +448,7 @@ end
 -- Iniciar / detener
 local function startMobileAimbot()
     if MobileAimbot.Connection then return end
-    
-    -- Lock inicial + FOV en 40
-    MobileAimbot.LockedTarget = getClosestTarget()
-    updateMobileFOVCircle()
-    
+    updateMobileFOVCircle() -- Crear FOV al iniciar
     MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
 end
 
@@ -468,21 +461,20 @@ local function stopMobileAimbot()
         MobileAimbot.FOVCircle:Remove()
         MobileAimbot.FOVCircle = nil
     end
-    MobileAimbot.LockedTarget = nil
 end
 
--- Toggle principal
+-- CONECTAR AL TOGGLE PRINCIPAL (REEMPLAZA AimToggle:OnChanged)
 AimToggle:OnChanged(function(Value)
-    AimbotSettings.Enabled = Value
-    MobileAimbot.Enabled = Value
+    AimbotSettings.Enabled = Value -- PC (Exunys)
+    MobileAimbot.Enabled = Value -- Móvil
     
     if Value then
         if isMobile() then
             startMobileAimbot()
             Fluent:Notify({
                 Title = "Aimbot Móvil",
-                Content = "Activado - FOV inicia en 40 | Lock fijo hasta soltar",
-                Duration = 3.5
+                Content = "Activado + FOV visible + Pantalla derecha",
+                Duration = 3
             })
         end
     else
@@ -492,17 +484,21 @@ AimToggle:OnChanged(function(Value)
     Notify("Aimbot", Value)
 end)
 
--- Callbacks FOV (sin cambios, pero aseguramos que el inicial sea 40)
+-- CONECTAR A TOGGLES DE FOV (agrega estos callbacks NUEVOS a tus toggles existentes)
+-- Busca y agrega/modifica estos en tu UI Combat:
+
+-- Para FOVVisible Toggle:
 Options.FOVVisible:OnChanged(function(Value)
     FOVSettings.Visible = Value
     FOVSettings.Enabled = Value
-    if MobileAimbot.FOVCircle then
-        MobileAimbot.FOVCircle.Visible = Value
+    if isMobile() and MobileAimbot.Enabled then
+        updateMobileFOVCircle() -- Actualiza círculo móvil
     end
 end)
 
+-- Para FOVColor Colorpicker:
 Options.FOVColor:OnChanged(function(Value)
-    if not rainbowFOV then 
+    if not rainbowFOV then
         FOVSettings.Color = Value
         if MobileAimbot.FOVCircle then
             MobileAimbot.FOVCircle.Color = Value
@@ -510,6 +506,7 @@ Options.FOVColor:OnChanged(function(Value)
     end
 end)
 
+-- Para AimFOV Slider:
 Options.AimFOV:OnChanged(function(Value)
     FOVSettings.Radius = Value
     if MobileAimbot.FOVCircle then
@@ -517,6 +514,7 @@ Options.AimFOV:OnChanged(function(Value)
     end
 end)
 
+-- Para FOVRainbow Toggle:
 Options.FOVRainbow:OnChanged(function(Value)
     rainbowFOV = Value
 end)
