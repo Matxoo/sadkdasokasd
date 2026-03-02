@@ -317,19 +317,29 @@ Tabs.Combat:AddSection("Aimbot & Extras")
         rainbowFOV = Value
     end)
 -- ───────────────────────────────────────────────────────────────
---     AIMBOT MÓVIL HOLD-TO-AIM (solo con toque en pantalla derecha)
+--     AIMBOT MÓVIL HOLD-TO-AIM V3 (MULTI-TOUCH + DISPARO)
 -- ───────────────────────────────────────────────────────────────
+-- REEMPLAZA EL BLOQUE ANTERIOR COMPLETO CON ESTE
 
 local MobileAimbot = {}
 MobileAimbot.Enabled = false
 MobileAimbot.ConnectionLoop = nil
 MobileAimbot.ConnectionTouch = nil
 MobileAimbot.FOVCircle = nil
-MobileAimbot.IsHolding = false
-MobileAimbot.LockedTarget = nil   -- recuerda el objetivo mientras mantienes presionado
+MobileAimbot.LockedTarget = nil
+MobileAimbot.ActiveTouches = {}  -- Tabla para trackear toques DERECHA (multi-dedo)
 
 local function isMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+end
+
+-- Contar toques activos en DERECHA
+local function getRightTouchesCount()
+    local count = 0
+    for _ in pairs(MobileAimbot.ActiveTouches) do
+        count = count + 1
+    end
+    return count
 end
 
 -- Crear/actualizar círculo FOV
@@ -350,13 +360,13 @@ local function updateMobileFOVCircle()
     MobileAimbot.FOVCircle.Filled = false
 end
 
--- Detecta si el toque está en la mitad derecha de la pantalla
+-- Detecta si el toque está en la mitad derecha
 local function isRightSideTouch(touchPos)
     local screenWidth = workspace.CurrentCamera.ViewportSize.X
     return touchPos.X > screenWidth * 0.5
 end
 
--- Encontrar objetivo más cercano (solo se usa cuando se necesita lockear)
+-- Encontrar mejor objetivo
 local function findBestTarget()
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         return nil
@@ -403,11 +413,12 @@ local function findBestTarget()
     return closest
 end
 
--- Loop principal (solo corre cuando está hold)
+-- Loop principal (solo si hay toques en derecha)
 local function mobileAimbotLoop(deltaTime)
-    if not MobileAimbot.Enabled or not MobileAimbot.IsHolding then return end
+    local rightTouches = getRightTouchesCount()
+    if not MobileAimbot.Enabled or rightTouches == 0 then return end
     
-    -- Actualizar posición del círculo FOV
+    -- Actualizar FOV
     if MobileAimbot.FOVCircle then
         local center = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
         MobileAimbot.FOVCircle.Position = center
@@ -421,11 +432,10 @@ local function mobileAimbotLoop(deltaTime)
         MobileAimbot.FOVCircle.Radius = FOVSettings.Radius or 150
     end
     
-    -- Si ya tenemos objetivo lockeado, lo mantenemos (no cambia hasta soltar)
+    -- Mantener lock (no cambia hasta que se libere completamente)
     local targetPart = MobileAimbot.LockedTarget
     
     if not targetPart or not targetPart.Parent or not targetPart.Parent:FindFirstChildOfClass("Humanoid") then
-        -- Si el objetivo muere/desaparece → buscar nuevo (pero solo si aún hold)
         targetPart = findBestTarget()
         MobileAimbot.LockedTarget = targetPart
     end
@@ -433,23 +443,23 @@ local function mobileAimbotLoop(deltaTime)
     if targetPart and targetPart.Parent then
         local camera = workspace.CurrentCamera
         
-        -- Predicción de movimiento
+        -- Predicción
         local predictedPos = targetPart.Position
         local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
         if root then
             predictedPos = predictedPos + root.Velocity * 0.12
         end
         
-        -- Apuntar con pantalla derecha (sin roll)
+        -- Pantalla derecha
         local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos, Vector3.new(0, 1, 0))
         
-        -- Smooth más agresivo cuando hold
+        -- Smooth agresivo
         local baseSmooth = AimbotSettings.Sensitivity or 0.1
-        local smooth = math.clamp(baseSmooth * 4, 0.2, 0.9)  -- más rápido al mantener
+        local smooth = math.clamp(baseSmooth * 4, 0.2, 0.9)
         
         camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)
         
-        -- Snap si muy cerca
+        -- Snap cerca
         local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
         local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
@@ -459,7 +469,7 @@ local function mobileAimbotLoop(deltaTime)
     end
 end
 
--- Manejo de toques (InputBegan / InputEnded)
+-- InputBegan: Agrega toque a la tabla
 local function onInputBegan(input, gameProcessed)
     if not MobileAimbot.Enabled then return end
     if gameProcessed then return end
@@ -467,30 +477,31 @@ local function onInputBegan(input, gameProcessed)
     
     local touchPos = input.Position
     if isRightSideTouch(touchPos) then
-        MobileAimbot.IsHolding = true
+        local touchId = input.Id  -- ID único del dedo
+        MobileAimbot.ActiveTouches[touchId] = true
         
-        -- Lockear objetivo al empezar a tocar
-        MobileAimbot.LockedTarget = findBestTarget()
-        
-        if not MobileAimbot.ConnectionLoop then
-            MobileAimbot.ConnectionLoop = RunService.RenderStepped:Connect(mobileAimbotLoop)
+        -- Si es el primer toque → lock objetivo
+        if getRightTouchesCount() == 1 then
+            MobileAimbot.LockedTarget = findBestTarget()
         end
     end
 end
 
+-- InputEnded: Remueve toque de la tabla (solo desactiva si count==0)
 local function onInputEnded(input, gameProcessed)
     if input.UserInputType ~= Enum.UserInputType.Touch then return end
     
-    MobileAimbot.IsHolding = false
-    MobileAimbot.LockedTarget = nil  -- Libera el lock al soltar
+    local touchId = input.Id
+    MobileAimbot.ActiveTouches[touchId] = nil
     
-    -- No desconectamos el loop inmediatamente para que siga actualizando FOV
+    -- Solo libera lock si NO hay más toques en derecha
+    if getRightTouchesCount() == 0 then
+        MobileAimbot.LockedTarget = nil
+    end
 end
 
--- Iniciar / detener todo
+-- Start/Stop
 local function startMobileAimbot()
-    if MobileAimbot.ConnectionLoop then return end
-    
     updateMobileFOVCircle()
     
     MobileAimbot.ConnectionLoop = RunService.RenderStepped:Connect(mobileAimbotLoop)
@@ -507,7 +518,7 @@ local function stopMobileAimbot()
     
     if MobileAimbot.ConnectionTouch then
         for _, conn in ipairs(MobileAimbot.ConnectionTouch) do
-            conn:Disconnect()
+            if conn then conn:Disconnect() end
         end
         MobileAimbot.ConnectionTouch = nil
     end
@@ -517,11 +528,11 @@ local function stopMobileAimbot()
         MobileAimbot.FOVCircle = nil
     end
     
-    MobileAimbot.IsHolding = false
+    MobileAimbot.ActiveTouches = {}
     MobileAimbot.LockedTarget = nil
 end
 
--- Toggle principal
+-- Toggle
 AimToggle:OnChanged(function(Value)
     AimbotSettings.Enabled = Value
     MobileAimbot.Enabled = Value
@@ -531,7 +542,7 @@ AimToggle:OnChanged(function(Value)
             startMobileAimbot()
             Fluent:Notify({
                 Title = "Aimbot Móvil",
-                Content = "Hold pantalla derecha para apuntar",
+                Content = "Multi-touch OK! Hold derecha + dispara",
                 Duration = 3.5
             })
         end
@@ -542,7 +553,7 @@ AimToggle:OnChanged(function(Value)
     Notify("Aimbot", Value)
 end)
 
--- Mantener actualizaciones de FOV (agrega estos si no los tienes)
+-- FOV callbacks (mismos que antes)
 Options.FOVVisible:OnChanged(function(v)
     FOVSettings.Visible = v
     FOVSettings.Enabled = v
