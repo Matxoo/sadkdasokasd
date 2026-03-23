@@ -23,7 +23,7 @@ if oldCategorizedGui then oldCategorizedGui:Destroy() end
 local oldKeyGui = PlayerGui:FindFirstChild("KeyVerificationUI")
 if oldKeyGui then oldKeyGui:Destroy() end
 local Window = Fluent:CreateWindow({
-Title = "Nexo v1.08",
+Title = "Nexo v1.09",
 SubTitle = "By Mat",
 TabWidth = 160,
 Size = UDim2.fromOffset(580, 460),
@@ -41,332 +41,468 @@ Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 local Options = Fluent.Options
 -- ───────────────────────────────────────────────────────────────
---     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI (adaptado de VenomHub)
---     N blanca + borde blanco + tamaño FIJO + drag + toggle real
+--     ÍCONO MÓVIL PARA MINIMIZAR/ABRIR GUI - Versión 2025 más estable
+--     Busca por nombre de ventana real + espera más inteligente
 -- ───────────────────────────────────────────────────────────────
 task.spawn(function()
-local UIS = game:GetService("UserInputService")
-if not UIS.TouchEnabled then return end
-task.wait(1.2)  -- Espera a que Fluent cree la GUI
-local pg = game.Players.LocalPlayer.PlayerGui
-local cg = game:GetService("CoreGui")
--- Buscar la ScreenGui de Nexo/Fluent (por título "Nexo v1.06")
-local nexoGui = nil
-local places = {pg, cg}
-for _, place in ipairs(places) do
-for _, gui in ipairs(place:GetChildren()) do
-if gui:IsA("ScreenGui") then
--- Busca un TextLabel con "Nexo v1.06"
-for _, label in ipairs(gui:GetDescendants()) do
-if label:IsA("TextLabel") and label.Text:find("Nexo v1.06") then
-nexoGui = gui
-break
-end
-end
-if nexoGui then break end
-end
-end
-if nexoGui then break end
-end
-if not nexoGui then
-warn("[Mobile Icon] No loaded ScreenGui de Nexo.")
-return
-end
--- Frame principal (busca el Frame con el título "Nexo v1.06" o el más grande)
-local mainFrame = nil
-for _, frame in ipairs(nexoGui:GetDescendants()) do
-if frame:IsA("Frame") and frame:FindFirstChild("Title") and frame.Title.Text:find("Nexo") then
-mainFrame = frame
-break
-end
-end
-if not mainFrame then
--- Fallback: el primer Frame grande
-for _, frame in ipairs(nexoGui:GetDescendants()) do
-if frame:IsA("Frame") and frame.Size.X.Offset > 500 then
-mainFrame = frame
-break
-end
-end
-end
-if not mainFrame then
-warn("[Mobile Icon] No loaded.")
-mainFrame = nexoGui  -- Último recurso
-end
-local icon = Instance.new("TextButton")
-icon.Name = "MinIconN"
-icon.Size = UDim2.new(0, 45, 0, 45)          -- tamaño FIJO
-icon.Position = UDim2.new(0, 15, 1, -70)
-icon.AnchorPoint = Vector2.new(0, 1)
-icon.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-icon.Text = ""
-icon.ZIndex = 12000
-icon.Parent = nexoGui  -- Dentro de la misma ScreenGui
--- Círculo perfecto
-local cr = Instance.new("UICorner")
-cr.CornerRadius = UDim.new(1, 0)
-cr.Parent = icon
--- Borde BLANCO visible
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(255, 255, 255)
-stroke.Thickness = 3
-stroke.Transparency = 0.0
-stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-stroke.Parent = icon
--- Letra N en blanco
-local nLabel = Instance.new("TextLabel")
-nLabel.Size = UDim2.new(1, 0, 1, 0)
-nLabel.BackgroundTransparency = 1
-nLabel.Text = "N"
-nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-nLabel.TextScaled = true
-nLabel.Font = Enum.Font.GothamBlack
-nLabel.Parent = icon
-local minimized = false
-icon.Activated:Connect(function()
-minimized = not minimized
-mainFrame.Visible = not minimized
--- Tamaño FIJO: no cambia nunca
+    local UIS = game:GetService("UserInputService")
+    if not UIS.TouchEnabled then return end
+
+    local TITLE_TEXT = "Nexo v1.09"   -- ← CAMBIA AQUÍ si cambias el título de la ventana
+
+    -- Espera inteligente: hasta 8 segundos máximo
+    local success, screenGui = pcall(function()
+        local start = tick()
+        repeat
+            task.wait(0.25)
+            for _, gui in ipairs(game:GetDescendantsOf(game.Players.LocalPlayer.PlayerGui)) do
+                if gui:IsA("ScreenGui") and gui:FindFirstChildWhichIsA("Frame", true) then
+                    local titleLabel = gui:FindFirstChild("Title", true)
+                    if titleLabel and titleLabel:IsA("TextLabel") and titleLabel.Text:find(TITLE_TEXT, 1, true) then
+                        return gui
+                    end
+                end
+            end
+
+            -- También buscamos en CoreGui (algunos executors lo ponen ahí)
+            for _, gui in ipairs(game:GetDescendantsOf(game:GetService("CoreGui"))) do
+                if gui:IsA("ScreenGui") and gui:FindFirstChildWhichIsA("Frame", true) then
+                    local titleLabel = gui:FindFirstChild("Title", true)
+                    if titleLabel and titleLabel:IsA("TextLabel") and titleLabel.Text:find(TITLE_TEXT, 1, true) then
+                        return gui
+                    end
+                end
+            end
+
+        until tick() - start > 8
+        return nil
+    end)
+
+    if not success or not screenGui then
+        warn("[Mobile Icon] No se encontró la ScreenGui de Nexo después de 8 segundos")
+        return
+    end
+
+    -- Buscamos el Frame principal (el que tiene el título)
+    local mainFrame = nil
+    for _, obj in ipairs(screenGui:GetDescendants()) do
+        if obj:IsA("Frame") and obj:FindFirstChild("Title") and obj.Title.Text:find(TITLE_TEXT, 1, true) then
+            mainFrame = obj
+            break
+        end
+    end
+
+    if not mainFrame then
+        -- Fallback: Frame más grande que tenga un TextLabel con "Nexo"
+        for _, obj in ipairs(screenGui:GetDescendants()) do
+            if obj:IsA("Frame") and obj.Size.X.Offset >= 500 then
+                local title = obj:FindFirstChild("Title", true)
+                if title and title.Text:find("Nexo") then
+                    mainFrame = obj
+                    break
+                end
+            end
+        end
+    end
+
+    if not mainFrame then
+        warn("[Mobile Icon] No se encontró el Frame principal → usando ScreenGui como fallback")
+        mainFrame = screenGui
+    end
+
+    -- Creamos el botón circular
+    local icon = Instance.new("TextButton")
+    icon.Name = "NexoMinimizeBtn"
+    icon.Size = UDim2.new(0, 54, 0, 54)           -- un poco más grande (mejor para dedos)
+    icon.Position = UDim2.new(0, 20, 1, -90)      -- mejor posición inicial
+    icon.AnchorPoint = Vector2.new(0, 1)
+    icon.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+    icon.Text = ""
+    icon.ZIndex = 9999
+    icon.Parent = screenGui
+    icon.AutoButtonColor = false
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = icon
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(220, 220, 255)
+    stroke.Thickness = 2.5
+    stroke.Transparency = 0.15
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = icon
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "N"
+    label.TextColor3 = Color3.fromRGB(240, 240, 255)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBlack
+    label.TextStrokeTransparency = 0.7
+    label.TextStrokeColor3 = Color3.fromRGB(0,0,0)
+    label.Parent = icon
+
+    -- Efecto de sombra / glow sutil
+    local shadow = Instance.new("ImageLabel")
+    shadow.Size = UDim2.new(1.4, 0, 1.4, 0)
+    shadow.Position = UDim2.new(-0.2, 0, -0.2, 0)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://6014261993"  -- sombra suave común
+    shadow.ImageColor3 = Color3.fromRGB(0,0,0)
+    shadow.ImageTransparency = 0.6
+    shadow.ZIndex = -1
+    shadow.Parent = icon
+
+    local minimized = false
+
+    icon.Activated:Connect(function()
+        minimized = not minimized
+        mainFrame.Visible = not minimized
+        -- Pequeño feedback visual
+        icon.BackgroundColor3 = minimized and Color3.fromRGB(35, 35, 45) or Color3.fromRGB(15, 15, 22)
+    end)
+
+    -- Drag (muy suave)
+    local dragging, dragStart, startPos
+    icon.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = icon.Position
+            icon.BackgroundColor3 = Color3.fromRGB(40, 40, 55) -- feedback al tocar
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStart
+            icon.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    icon.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            icon.BackgroundColor3 = minimized and Color3.fromRGB(35, 35, 45) or Color3.fromRGB(15, 15, 22)
+        end
+    end)
+
+    -- Pequeño retraso final para asegurar que todo esté renderizado
+    task.delay(0.4, function()
+        mainFrame.Visible = true
+        icon.Visible = true
+    end)
+
+    print("[Mobile Icon] Cargado correctamente - posición inicial ajustada")
 end)
--- Arrastrable
-local dragging = false
-local dragStart = nil
-local startPos = nil
-icon.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.Touch then
-dragging = true
-dragStart = input.Position
-startPos = icon.Position
-end
-end)
-UIS.InputChanged:Connect(function(input)
-if dragging and input.UserInputType == Enum.UserInputType.Touch then
-local delta = input.Position - dragStart
-icon.Position = UDim2.new(
-startPos.X.Scale,
-startPos.X.Offset + delta.X,
-startPos.Y.Scale,
-startPos.Y.Offset + delta.Y
-)
-end
-end)
-icon.InputEnded:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.Touch then
-dragging = false
-end
-end)
-mainFrame.Visible = true
-print("[Mobile] loaded")
-end)
--- ╭───────────────────────────────────────────────────────────────
 -- ╭───────────────────────────────────────────────────────────────
 -- │                           COMBAT                              │
 -- ╰───────────────────────────────────────────────────────────────
 do
-    Tabs.Combat:AddSection("Aimbot & Extras")
+    -- AIMBOT PC (protegido por pcall - no se cambió nada)
+    pcall(function()
+        Tabs.Combat:AddSection("Aimbot & Extras")
 
-    -- Config compartida
-    local AimSettings = {
-        Enabled = false,
-        WallCheck = false,
-        ShowFov = true,
-        Fov = 150,
-        Smoothing = 0.06,
-        AimPart = "Head",
-        PredictionStrength = 0.22,
-        RainbowFov = false
-    }
+        local AimSettings = {
+            Enabled = false,
+            WallCheck = false,
+            ShowFov = true,
+            Fov = 150,
+            Smoothing = 0.06,
+            AimPart = "Head",
+            PredictionStrength = 0.22,
+            RainbowFov = false,
+            Target = nil,
+            IsAiming = false,
+            CameraTween = nil,
+            MouseBind = Enum.UserInputType.MouseButton2
+        }
 
-    local fovColor = Color3.fromRGB(255, 255, 255)
+        local fovColor = Color3.fromRGB(255, 255, 255)
 
-    -- FOV Circle PC
-    local pcFovCircle = Drawing.new("Circle")
-    pcFovCircle.Thickness = 2
-    pcFovCircle.NumSides = 100
-    pcFovCircle.Radius = AimSettings.Fov
-    pcFovCircle.Color = fovColor
-    pcFovCircle.Transparency = 1
-    pcFovCircle.Visible = false
-    pcFovCircle.Filled = false
+        _G.IgnoreList = _G.IgnoreList or {}
 
-    RunService.RenderStepped:Connect(function()
-        if not AimSettings.Enabled or not AimSettings.ShowFov then
-            pcFovCircle.Visible = false
-            return
+        local fovCircle = Drawing.new("Circle")
+        fovCircle.Thickness = 2
+        fovCircle.NumSides = 100
+        fovCircle.Radius = AimSettings.Fov
+        fovCircle.Color = fovColor
+        fovCircle.Transparency = 1
+        fovCircle.Visible = false
+        fovCircle.Filled = false
+
+        RunService.RenderStepped:Connect(function()
+            local pos = UserInputService:GetMouseLocation()
+            
+            if AimSettings.RainbowFov then
+                local hue = tick() % 3 / 3
+                fovCircle.Color = Color3.fromHSV(hue, 1, 1)
+            else
+                fovCircle.Color = fovColor
+            end
+            
+            fovCircle.Position = pos
+            fovCircle.Radius = AimSettings.Fov
+            fovCircle.Visible = AimSettings.ShowFov and AimSettings.Enabled
+        end)
+
+        local function IsAlive(player)
+            return player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0
         end
 
-        local mousePos = UserInputService:GetMouseLocation()
-        pcFovCircle.Position = mousePos
-        pcFovCircle.Radius = AimSettings.Fov
+        local function isVisible(targetPosition, character)
+            if not AimSettings.WallCheck then return true end
 
-        if AimSettings.RainbowFov then
-            local hue = tick() % 3 / 3
-            pcFovCircle.Color = Color3.fromHSV(hue, 1, 1)
-        else
-            pcFovCircle.Color = fovColor
+            local ignoreList = {workspace.CurrentCamera}
+            if LocalPlayer.Character then table.insert(ignoreList, LocalPlayer.Character) end
+
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = ignoreList
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            rayParams.IgnoreWater = true
+
+            local origin = workspace.CurrentCamera.CFrame.Position
+            local direction = (targetPosition - origin).Unit * 5000
+
+            local rayResult = workspace:Raycast(origin, direction, rayParams)
+
+            return not rayResult or rayResult.Instance:IsDescendantOf(character)
         end
 
-        pcFovCircle.Visible = true
-    end)
+        local function shouldIgnore(name)
+            if not name or name == "" then return false end
+            local lower = string.lower(name)
+            for _, ign in ipairs(_G.IgnoreList) do
+                if string.lower(ign) == lower then
+                    return true
+                end
+            end
+            return false
+        end
 
-    -- Funciones compartidas
-    local function IsAlive(player)
-        return player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0
-    end
+        local function GetClosestToMouse()
+            local pos = UserInputService:GetMouseLocation()
+            local closestPlayer = nil
+            local minDistance = AimSettings.Fov
 
-    local function isVisible(targetPosition, character)
-        if not AimSettings.WallCheck then return true end
-
-        local ignoreList = {workspace.CurrentCamera}
-        if LocalPlayer.Character then table.insert(ignoreList, LocalPlayer.Character) end
-
-        local rayParams = RaycastParams.new()
-        rayParams.FilterDescendantsInstances = ignoreList
-        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-        rayParams.IgnoreWater = true
-
-        local origin = workspace.CurrentCamera.CFrame.Position
-        local direction = (targetPosition - origin).Unit * 5000
-
-        local rayResult = workspace:Raycast(origin, direction, rayParams)
-
-        return not rayResult or rayResult.Instance:IsDescendantOf(character)
-    end
-
-    local function GetClosestTarget()
-        local pos = UserInputService:GetMouseLocation()
-        local closest = nil
-        local minDist = AimSettings.Fov
-
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and IsAlive(player) then
-                local char = player.Character
-                local part = char and char:FindFirstChild(AimSettings.AimPart)
-                if part then
-                    local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - pos).Magnitude
-                        local visible = not AimSettings.WallCheck or isVisible(part.Position, char)
-                        if dist < minDist and visible then
-                            minDist = dist
-                            closest = player
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and not shouldIgnore(player.Name) and IsAlive(player) then
+                    local char = player.Character
+                    local aimPart = char and char:FindFirstChild(AimSettings.AimPart)
+                    if aimPart then
+                        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(aimPart.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - pos).Magnitude
+                            
+                            local visible = not AimSettings.WallCheck or isVisible(aimPart.Position, char)
+                            
+                            if dist < minDistance and visible then
+                                minDistance = dist
+                                closestPlayer = player
+                            end
                         end
                     end
                 end
             end
-        end
-        return closest
-    end
-
-    -- AIMBOT PC
-    local pcTarget = nil
-    local pcIsAiming = false
-    local pcTween = nil
-
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe or not AimSettings.Enabled then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            pcTarget = GetClosestTarget()
-            pcIsAiming = true
-        end
-    end)
-
-    UserInputService.InputEnded:Connect(function(input, gpe)
-        if gpe or not AimSettings.Enabled then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
-            pcIsAiming = false
-            pcTarget = nil
-            if pcTween then pcTween:Cancel() pcTween = nil end
-        end
-    end)
-
-    RunService.Heartbeat:Connect(function()
-        if not AimSettings.Enabled or not pcIsAiming then return end
-
-        local target = pcTarget
-        if not (target and IsAlive(target)) then
-            target = GetClosestTarget()
-            pcTarget = target
+            return closestPlayer
         end
 
-        if target and IsAlive(target) then
-            local char = target.Character
-            local part = char and char:FindFirstChild(AimSettings.AimPart)
-            if part then
-                if pcTween then pcTween:Cancel() pcTween = nil end
+        local touchStartTime = nil
+        local TOUCH_HOLD_TIME = 0.2
 
-                local ping = 0
-                pcall(function() ping = LocalPlayer:GetNetworkPing() end)
+        UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or not AimSettings.Enabled then return end
 
-                local velocity = part.AssemblyLinearVelocity or Vector3.new()
-                local predict = velocity * (ping * AimSettings.PredictionStrength + 0.02)
-                local targetPos = part.Position + predict
-
-                local targetCFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPos)
-
-                local tweenInfo = TweenInfo.new(AimSettings.Smoothing, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-                pcTween = game:GetService("TweenService"):Create(workspace.CurrentCamera, tweenInfo, {CFrame = targetCFrame})
-                pcTween:Play()
-            else
-                pcTarget = nil
+            if input.UserInputType == AimSettings.MouseBind then
+                AimSettings.Target = GetClosestToMouse()
+                AimSettings.IsAiming = true
+            elseif input.UserInputType == Enum.UserInputType.Touch then
+                touchStartTime = tick()
             end
+        end)
+
+        UserInputService.InputEnded:Connect(function(input, gpe)
+            if gpe or not AimSettings.Enabled then return end
+
+            if input.UserInputType == AimSettings.MouseBind then
+                AimSettings.IsAiming = false
+                AimSettings.Target = nil
+                if AimSettings.CameraTween then
+                    AimSettings.CameraTween:Cancel()
+                    AimSettings.CameraTween = nil
+                end
+            elseif input.UserInputType == Enum.UserInputType.Touch then
+                if touchStartTime and (tick() - touchStartTime >= TOUCH_HOLD_TIME) then
+                    AimSettings.IsAiming = false
+                    AimSettings.Target = nil
+                    if AimSettings.CameraTween then
+                        AimSettings.CameraTween:Cancel()
+                        AimSettings.CameraTween = nil
+                    end
+                end
+                touchStartTime = nil
+            end
+        end)
+
+        RunService.Heartbeat:Connect(function()
+            if not AimSettings.Enabled then return end
+
+            if touchStartTime and (tick() - touchStartTime >= TOUCH_HOLD_TIME) then
+                AimSettings.IsAiming = true
+                AimSettings.Target = GetClosestToMouse()
+            end
+
+            if AimSettings.IsAiming then
+                local targetPlayer = AimSettings.Target
+                if not (targetPlayer and IsAlive(targetPlayer)) then
+                    targetPlayer = GetClosestToMouse()
+                    AimSettings.Target = targetPlayer
+                end
+
+                if targetPlayer and IsAlive(targetPlayer) then
+                    local char = targetPlayer.Character
+                    local aimPart = char and char:FindFirstChild(AimSettings.AimPart)
+                    if aimPart then
+                        if AimSettings.CameraTween then
+                            AimSettings.CameraTween:Cancel()
+                            AimSettings.CameraTween = nil
+                        end
+
+                        local ping = 0
+                        pcall(function() ping = LocalPlayer:GetNetworkPing() end)
+
+                        local velocity = aimPart.AssemblyLinearVelocity or Vector3.new()
+                        local predictionOffset = velocity * (ping * AimSettings.PredictionStrength + 0.02)
+
+                        local targetPos = aimPart.Position + predictionOffset
+                        local targetCFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPos)
+
+                        local tweenInfo = TweenInfo.new(AimSettings.Smoothing, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                        AimSettings.CameraTween = game:GetService("TweenService"):Create(workspace.CurrentCamera, tweenInfo, {CFrame = targetCFrame})
+                        AimSettings.CameraTween:Play()
+                    else
+                        AimSettings.Target = nil
+                    end
+                end
+            end
+        end)
+
+        local function Notify(title, value)
+            local state = value and "Enabled" or "Disabled"
+            Fluent:Notify({ Title = title, Content = "Status: " .. state, Duration = 2 })
         end
+
+        Tabs.Combat:AddToggle("AimEnabled", { Title = "Enabled", Default = false })
+            :OnChanged(function(v)
+                AimSettings.Enabled = v
+                Notify("Aimbot", v)
+            end)
+
+        Tabs.Combat:AddToggle("WallCheck", { Title = "Wall Check", Default = false })
+            :OnChanged(function(v) AimSettings.WallCheck = v end)
+
+        Tabs.Combat:AddDropdown("AimPart", {
+            Title = "Target Part",
+            Values = {"Head", "HumanoidRootPart", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
+            Default = "Head"
+        }):OnChanged(function(v) AimSettings.AimPart = v end)
+
+        Tabs.Combat:AddKeybind("AimBind", {
+            Title = "Bind",
+            Mode = "Toggle",
+            Default = "None",
+            Callback = function(v) Options.AimEnabled:SetValue(v) end
+        })
+
+        Tabs.Combat:AddSlider("AimSmooth", {
+            Title = "Smoothness",
+            Default = 0.05, Min = 0.01, Max = 1, Rounding = 2
+        }):OnChanged(function(v) AimSettings.Smoothing = v end)
+
+        Tabs.Combat:AddSlider("PredictionStrength", {
+            Title = "Prediction Strength",
+            Default = 1, Min = 0.01, Max = 5, Rounding = 2
+        }):OnChanged(function(v) AimSettings.PredictionStrength = v end)
+
+        Tabs.Combat:AddParagraph({ Title = "FOV Settings", Content = "" })
+
+        Tabs.Combat:AddToggle("ShowFOV", { Title = "Show FOV Circle", Default = true })
+            :OnChanged(function(v) AimSettings.ShowFov = v end)
+
+        Tabs.Combat:AddSlider("AimFOV", {
+            Title = "FOV Radius",
+            Default = 150, Min = 30, Max = 800, Rounding = 0
+        }):OnChanged(function(v)
+            AimSettings.Fov = v
+            fovCircle.Radius = v
+        end)
+
+        Tabs.Combat:AddColorpicker("FOVColor", {
+            Title = "FOV Circle Color",
+            Default = Color3.fromRGB(255, 255, 255)
+        }):OnChanged(function(color)
+            fovColor = color
+        end)
+
+        Tabs.Combat:AddToggle("RainbowFOV", { Title = "Rainbow FOV", Default = false })
+            :OnChanged(function(v) AimSettings.RainbowFov = v end)
     end)
 
-    -- AIMBOT MÓVIL
-    local MobileAimbot = {}
-    MobileAimbot.Enabled = false
-    MobileAimbot.Connection = nil
-    MobileAimbot.FOVCircle = nil
+    -- AIMBOT MÓVIL AISLADO (solo se ejecuta en mobile)
+    if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+        local MobileAimbot = {}
+        MobileAimbot.Enabled = false
+        MobileAimbot.Connection = nil
+        MobileAimbot.FOVCircle = nil
 
-    local function isMobile()
-        return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-    end
+        local function updateMobileFOVCircle()
+            if MobileAimbot.FOVCircle then MobileAimbot.FOVCircle:Remove() end
+            MobileAimbot.FOVCircle = Drawing.new("Circle")
+            MobileAimbot.FOVCircle.Thickness = 2
+            MobileAimbot.FOVCircle.NumSides = 100
+            MobileAimbot.FOVCircle.Radius = Options.AimFOV.Value or 150
+            MobileAimbot.FOVCircle.Color = Options.FOVColor.Value or Color3.fromRGB(255, 255, 255)
+            MobileAimbot.FOVCircle.Transparency = 1
+            MobileAimbot.FOVCircle.Visible = Options.ShowFOV.Value or false
+            MobileAimbot.FOVCircle.Filled = false
+        end
 
-    local function updateMobileFOVCircle()
-        if MobileAimbot.FOVCircle then MobileAimbot.FOVCircle:Remove() end
-        if not isMobile() then return end
+        local function getClosestTargetMobile()
+            if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
 
-        MobileAimbot.FOVCircle = Drawing.new("Circle")
-        MobileAimbot.FOVCircle.Thickness = 2
-        MobileAimbot.FOVCircle.NumSides = 100
-        MobileAimbot.FOVCircle.Radius = AimSettings.Fov
-        MobileAimbot.FOVCircle.Color = fovColor
-        MobileAimbot.FOVCircle.Transparency = 1
-        MobileAimbot.FOVCircle.Visible = AimSettings.ShowFov
-        MobileAimbot.FOVCircle.Filled = false
-    end
+            local camera = workspace.CurrentCamera
+            local cameraPos = camera.CFrame.Position
+            local closest = nil
+            local bestDot = -1
+            local radius = Options.AimFOV.Value or 150
 
-    local function getClosestTargetMobile()
-        local camera = workspace.CurrentCamera
-        local cameraPos = camera.CFrame.Position
-        local closest = nil
-        local bestDot = -1
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player == LocalPlayer then continue end
+                if shouldIgnore(player.Name) then continue end
 
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player == LocalPlayer or not player.Character then continue end
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then continue end
 
-            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            if not humanoid or humanoid.Health <= 0 then continue end
+                local part = player.Character:FindFirstChild(Options.AimPart.Value or "Head")
+                if not part then continue end
 
-            local part = player.Character:FindFirstChild(AimSettings.AimPart)
-            if not part then continue end
+                if Options.WallCheck.Value and not isVisible(part.Position, player.Character) then continue end
 
-            local direction = (part.Position - cameraPos)
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-
-            local result = workspace:Raycast(cameraPos, direction.Unit * 5000, raycastParams)
-            if result and result.Instance:IsDescendantOf(player.Character) then
                 local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
                 if onScreen then
                     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
                     local vectorToTarget = Vector2.new(screenPos.X, screenPos.Y) - screenCenter
                     local distance = vectorToTarget.Magnitude
 
-                    if distance <= AimSettings.Fov then
-                        local dot = 1 - (distance / AimSettings.Fov)
+                    if distance <= radius then
+                        local dot = 1 - (distance / radius)
                         if dot > bestDot then
                             bestDot = dot
                             closest = part
@@ -374,138 +510,192 @@ do
                     end
                 end
             end
+            return closest
         end
 
-        return closest
-    end
+        local function mobileAimbotLoop(deltaTime)
+            if not MobileAimbot.Enabled then return end
 
-    local function mobileAimbotLoop(deltaTime)
-        if not AimSettings.Enabled or not isMobile() then return end
+            if MobileAimbot.FOVCircle then
+                local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+                MobileAimbot.FOVCircle.Position = screenCenter
 
-        if MobileAimbot.FOVCircle then
-            local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
-            MobileAimbot.FOVCircle.Position = screenCenter
-            MobileAimbot.FOVCircle.Radius = AimSettings.Fov
-            MobileAimbot.FOVCircle.Visible = AimSettings.ShowFov
+                if Options.RainbowFOV.Value then
+                    local hue = tick() % 3 / 3
+                    MobileAimbot.FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
+                else
+                    MobileAimbot.FOVCircle.Color = Options.FOVColor.Value
+                end
 
-            if AimSettings.RainbowFov then
-                local hue = tick() % 3 / 3
-                MobileAimbot.FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
+                MobileAimbot.FOVCircle.Visible = Options.ShowFOV.Value
+                MobileAimbot.FOVCircle.Radius = Options.AimFOV.Value
+            end
+
+            local targetPart = getClosestTargetMobile()
+            if targetPart and targetPart.Parent then
+                local camera = workspace.CurrentCamera
+
+                local predictedPos = targetPart.Position
+                local humanoid = targetPart.Parent:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.RootPart then
+                    predictedPos = predictedPos + humanoid.RootPart.Velocity * 0.1
+                end
+
+                local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos, Vector3.new(0, 1, 0))
+
+                local baseSmooth = AimSettings.Smoothing or 0.1
+                local smooth = math.clamp(baseSmooth * 3, 0.15, 0.8)
+                camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)
+
+                local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+                local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
+                local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                if pixelDist < 20 then
+                    camera.CFrame = targetCFrame
+                end
+            end
+        end
+
+        local function startMobileAimbot()
+            if MobileAimbot.Connection then return end
+            updateMobileFOVCircle()
+            MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
+        end
+
+        local function stopMobileAimbot()
+            if MobileAimbot.Connection then
+                MobileAimbot.Connection:Disconnect()
+                MobileAimbot.Connection = nil
+            end
+            if MobileAimbot.FOVCircle then
+                MobileAimbot.FOVCircle:Remove()
+                MobileAimbot.FOVCircle = nil
+            end
+        end
+
+        Options.AimEnabled:OnChanged(function(Value)
+            MobileAimbot.Enabled = Value
+            if Value then
+                startMobileAimbot()
+                Fluent:Notify({
+                    Title = "Aimbot Móvil",
+                    Content = "Activado + FOV visible + Pantalla derecha",
+                    Duration = 3
+                })
             else
-                MobileAimbot.FOVCircle.Color = fovColor
+                stopMobileAimbot()
             end
-        end
+        end)
 
-        local targetPart = getClosestTargetMobile()
-        if targetPart and targetPart.Parent then
-            local camera = workspace.CurrentCamera
-
-            local predictedPos = targetPart.Position
-            local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
-            if root then
-                predictedPos = predictedPos + root.Velocity * AimSettings.PredictionStrength
+        -- Sincronizar toggles FOV con mobile
+        Options.ShowFOV:OnChanged(function(Value)
+            if MobileAimbot.FOVCircle then
+                updateMobileFOVCircle()
             end
+        end)
 
-            local targetCFrame = CFrame.lookAt(camera.CFrame.Position, predictedPos, Vector3.new(0, 1, 0))
-            local smooth = math.clamp(AimSettings.Smoothing * 3, 0.15, 0.8)
-            camera.CFrame = camera.CFrame:Lerp(targetCFrame, smooth * deltaTime * 60)
-
-            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-            local screenPos, _ = camera:WorldToViewportPoint(predictedPos)
-            local pixelDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-            if pixelDist < 20 then
-                camera.CFrame = targetCFrame
+        Options.FOVColor:OnChanged(function(Value)
+            if MobileAimbot.FOVCircle then
+                MobileAimbot.FOVCircle.Color = Value
             end
-        end
+        end)
+
+        Options.AimFOV:OnChanged(function(Value)
+            if MobileAimbot.FOVCircle then
+                MobileAimbot.FOVCircle.Radius = Value
+            end
+        end)
+
+        Options.RainbowFOV:OnChanged(function(Value)
+            -- manejado en el loop
+        end)
     end
 
-    local function startMobileAimbot()
-        if MobileAimbot.Connection then return end
-        updateMobileFOVCircle()
-        MobileAimbot.Connection = RunService.RenderStepped:Connect(mobileAimbotLoop)
-    end
+    -- IGNORE LIST UI (pcall pequeño)
+    pcall(function()
+        Tabs.Combat:AddSection("Ignore List Team Check")
 
-    local function stopMobileAimbot()
-        if MobileAimbot.Connection then
-            MobileAimbot.Connection:Disconnect()
-            MobileAimbot.Connection = nil
-        end
-        if MobileAimbot.FOVCircle then
-            MobileAimbot.FOVCircle:Remove()
-            MobileAimbot.FOVCircle = nil
-        end
-    end
+        Tabs.Combat:AddParagraph({
+            Title = "How to use",
+            Content = "Enter the player's **exact** name and press 'Add'.\n'If you want, you can show list' to see names in the console (F9)."
+        })
 
-    -- Toggle principal
-    local aimToggle = Tabs.Combat:AddToggle("AimEnabled", {Title = "Enabled", Default = false})
-    aimToggle:OnChanged(function(v)
-        AimSettings.Enabled = v
-        if v then
-            if isMobile() then startMobileAimbot() end
-        else
-            stopMobileAimbot()
-        end
-        Fluent:Notify({Title = "Aimbot", Content = v and "Enabled" or "Disabled", Duration = 2})
+        local playerNameInput = Tabs.Combat:AddInput("PlayerNameInput", {
+            Title = "Exact name to ignore",
+            Placeholder = "Ej: Astrowhs",
+            Default = "",
+            Clear = true
+        })
+
+        Tabs.Combat:AddButton({
+            Title = "Add to Ignore",
+            Callback = function()
+                local name = playerNameInput.Value
+                if name == "" or name == nil then
+                    Fluent:Notify({Title = "Error", Content = "Write a name first", Duration = 3})
+                    return
+                end
+                
+                name = name:gsub("^%s*(.-)%s*$", "%1")
+                
+                local playerExists = false
+                local realName = name
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if string.lower(p.Name) == string.lower(name) then
+                        playerExists = true
+                        realName = p.Name
+                        break
+                    end
+                end
+                
+                if not playerExists then
+                    Fluent:Notify({Title = "Not found", Content = "No player with that exact name was found on the server.", Duration = 4})
+                    return
+                end
+                
+                if not table.find(_G.IgnoreList, realName) then
+                    table.insert(_G.IgnoreList, realName)
+                    Fluent:Notify({Title = "Aggregate", Content = "Ignoring: " .. realName, Duration = 2.5})
+                else
+                    Fluent:Notify({Title = "It already exists", Content = realName .. " It's already on the list", Duration = 2.5})
+                end
+            end
+        })
+
+        Tabs.Combat:AddButton({
+            Title = "Show players (console F9)",
+            Callback = function()
+                local msg = "Players on the server:\n"
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Name ~= "" then
+                        msg = msg .. "- " .. p.Name .. "\n"
+                    end
+                end
+                print(msg)
+                Fluent:Notify({Title = "Printed list", Content = "Look at the console, press F9, and copy the exact name.", Duration = 5})
+            end
+        })
+
+        Tabs.Combat:AddButton({
+            Title = "Clear list",
+            Callback = function()
+                _G.IgnoreList = {}
+                Fluent:Notify({Title = "Cleaned", Content = "Empty list", Duration = 2.5})
+            end
+        })
+
+        Tabs.Combat:AddParagraph({
+            Title = "Players currently being ignored",
+            Content = function()
+                return #_G.IgnoreList > 0 and table.concat(_G.IgnoreList, "\n") or "None"
+            end
+        })
     end)
 
-    -- Keybind que toggles el toggle (sin nil)
-    Tabs.Combat:AddKeybind("AimBind", {
-        Title = "Bind",
-        Mode = "Toggle",
-        Default = "None"
-    }):OnChanged(function(v)
-        aimToggle:SetValue(v)
-    end)
+    -- OTHER COMBAT (Melee Aura + No Recoil - fuera del pcall)
+    Tabs.Combat:AddSection("Other Combat")
 
-    -- Resto de UI
-    Tabs.Combat:AddToggle("WallCheck", {Title = "Wall Check (ON = no wallbang)", Default = false})
-        :OnChanged(function(v) AimSettings.WallCheck = v end)
-
-    Tabs.Combat:AddDropdown("AimPart", {
-        Title = "Target Part",
-        Values = {"Head", "HumanoidRootPart"},
-        Default = "Head"
-    }):OnChanged(function(v) AimSettings.AimPart = v end)
-
-    Tabs.Combat:AddSlider("AimSmooth", {
-        Title = "Smoothness",
-        Default = 0.06, Min = 0.01, Max = 1, Rounding = 2
-    }):OnChanged(function(v) AimSettings.Smoothing = v end)
-
-    Tabs.Combat:AddSlider("PredictionStrength", {
-        Title = "Prediction Strength",
-        Default = 0.22, Min = 0.01, Max = 1, Rounding = 2
-    }):OnChanged(function(v) AimSettings.PredictionStrength = v end)
-
-    Tabs.Combat:AddParagraph({Title = "FOV Settings", Content = ""})
-
-    Tabs.Combat:AddToggle("ShowFOV", {Title = "Show FOV Circle", Default = true})
-        :OnChanged(function(v) AimSettings.ShowFov = v end)
-
-    Tabs.Combat:AddSlider("AimFOV", {
-        Title = "FOV Radius",
-        Default = 150, Min = 30, Max = 800, Rounding = 0
-    }):OnChanged(function(v)
-        AimSettings.Fov = v
-        pcFovCircle.Radius = v
-        if MobileAimbot.FOVCircle then MobileAimbot.FOVCircle.Radius = v end
-    end)
-
-    Tabs.Combat:AddColorpicker("FOVColor", {
-        Title = "FOV Circle Color",
-        Default = Color3.fromRGB(255, 255, 255)
-    }):OnChanged(function(color)
-        fovColor = color
-        if MobileAimbot.FOVCircle then MobileAimbot.FOVCircle.Color = color end
-    end)
-
-    Tabs.Combat:AddToggle("RainbowFOV", {Title = "Rainbow FOV", Default = false})
-        :OnChanged(function(v) AimSettings.RainbowFov = v end)
-
-    -- ======================== OTHER COMBAT FEATURES ========================
-    Tabs.Combat:AddSection("Other Combat Features")
-
-    -- Melee Aura completo
+    -- Melee Aura
     local MeleeAura_Enabled = false
     local MeleeAura_Connection
 
@@ -613,7 +803,7 @@ do
             if v then MeleeAura_Enable() else MeleeAura_Disable() end
         end)
 
-    -- No Recoil completo
+    -- No Recoil (tu código original)
     local NoRecoil_Enabled = false
     local NoRecoil_Connections = {}
     local GlobalOriginalValues = {}
@@ -721,719 +911,709 @@ end
 -- │                         AUTOFARM                              │
 -- ╰───────────────────────────────────────────────────────────────
 do
---============================ Autofarm & Main ============================--
+    Tabs.AutoFarm:AddSection("Autofarming & Extras")
+    -- Roblox Services (tal cual los querés)
+    local services = {
+        ws = game:GetService("Workspace"),
+        pl = game:GetService("Players"),
+        rs_rep = game:GetService("ReplicatedStorage"),
+        rs = game:GetService("RunService"),
+        uis = game:GetService("UserInputService")
+    }
 
--- Roblox Services
-local services = {
-	ws = game:GetService("Workspace"),
-	pl = game:GetService("Players"),
-	rs_rep = game:GetService("ReplicatedStorage"),
-	rs = game:GetService("RunService"),
-	uis = game:GetService("UserInputService")
-}
+    -- Local Variables
+    local localPlayer = services.pl.LocalPlayer
+    local task = task
+    local wait = task.wait
 
--- Local Variables
-local localPlayer = services.pl.LocalPlayer
-local task = task
-local wait = task.wait
+    local autofarmEnabled = false
+    local autofarmCooldown = false
+    local ignoredSafes = {}
 
-local autofarmEnabled = false
-local autofarmCooldown = false
-local ignoredSafes = {}
+    -- Global Variables for Ping
+    local pingThreshold = 100 -- You can adjust this value
+    local isPingHigh = false
 
--- Global Variables for Ping
-local pingThreshold = 100 -- You can adjust this value
-local isPingHigh = false
+    -- Placeholder for CoolDowns if not defined globally yet
+    local CoolDowns = { AutoPickUps = { MoneyCooldown = false } }
+    -- Placeholder for Settings if not defined globally yet
+    local Settings = { IsDead = false }
 
--- Placeholder for CoolDowns if not defined globally yet
-local CoolDowns = { AutoPickUps = { MoneyCooldown = false } }
--- Placeholder for Settings if not defined globally yet
-local Settings = { IsDead = false }
-
--- Function to check ping
-local function getPing()
-	local ping = localPlayer:GetNetworkPing()
-	return ping * 1000 -- Convert to milliseconds
-end
-
--- A new coroutine to constantly check ping in the background
-task.spawn(function()
-	while task.wait(5) do -- Check ping every 5 seconds
-		local ping = getPing()
-		if ping > pingThreshold then
-			isPingHigh = true
-		else
-			isPingHigh = false
-		end
-	end
-end)
-
---======================= SHADOW MODE (Reworked Invisibility) =========================--
-
-local Shadow_Active = false -- Nowa zmienna statusu
-local Shadow_Usable = true -- Nowa zmienna zgodności
-
-do -- Nowy 'do' block
-    repeat task.wait() until game:IsLoaded();
-
-    local svc_ref = cloneref or function(...) return ... end;
-
-    local GS = setmetatable({}, {
-        __index = function(_, k)
-            return svc_ref(game:GetService(k));
-        end
-    });
-
-    local P = GS.Players.LocalPlayer;
-    local Char = P.Character or P.CharacterAdded:Wait();
-    local HMND = nil
-    local HRP = nil
-
-    local function RefreshCharRefs()
-        Char = P.Character
-        if Char then
-            HRP = Char:FindFirstChild("HumanoidRootPart")
-            HMND = Char:FindFirstChildOfClass("Humanoid")
-        else
-            HRP = nil
-            HMND = nil
-        end
+    -- Function to check ping
+    local function getPing()
+        local ping = localPlayer:GetNetworkPing()
+        return ping * 1000 -- Convert to milliseconds
     end
 
-    RefreshCharRefs() -- Initial call
-
-    local AnimTrack_Cache = nil
-    local CamoAnim = Instance.new("Animation");
-    CamoAnim.AnimationId = "rbxassetid://215384594";
-
-    local RS = GS.RunService;
-    local UpdateFrame = RS.Heartbeat;
-    local WaitRender = RS.RenderStepped;
-
-    local CoreGS = GS.CoreGui;
-    local StartGS = GS.StarterGui;
-
-    -- GUI for warning message (uses original names for clarity on screen)
-    local HUD = Instance.new("ScreenGui");
-    HUD.Name = "ShadowWarningHUD";
-    HUD.Parent = CoreGS;
-    HUD.ResetOnSpawn = false;
-    HUD.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
-
-    local WarningText = Instance.new("TextLabel", HUD);
-    WarningText.Text = "⚠️You are visible⚠️";
-    WarningText.Visible = false;
-    WarningText.Size = UDim2.new(0, 200, 0, 30);
-    WarningText.Position = UDim2.new(0.5, -100, 0.85, 0);
-    WarningText.BackgroundTransparency = 1;
-    WarningText.Font = Enum.Font.GothamSemibold;
-    WarningText.TextSize = 24;
-    WarningText.TextColor3 = Color3.fromRGB(255, 255, 0);
-    WarningText.TextStrokeTransparency = 0.5;
-    WarningText.ZIndex = 10;
-
-    -- Check R6 requirement
-    if Char and not Char:FindFirstChild("Torso") then
-        pcall(function()
-            StartGS:SetCore("SendNotification", {
-                Title = "Shadow Mode FAILED",
-                Text = "Feature requires R6 Avatar.",
-                Duration = 5,
-            });
-        end)
-        Shadow_Usable = false
-    end
-
-    local function CheckGrounded()
-        return HMND and HMND:IsDescendantOf(workspace) and HMND.FloorMaterial ~= Enum.Material.Air;
-    end
-
-    local function CacheAnimTrack()
-        if AnimTrack_Cache then
-            pcall(function() AnimTrack_Cache:Stop() end)
-            AnimTrack_Cache = nil
+    -- A new coroutine to constantly check ping in the background
+    task.spawn(function()
+        while task.wait(5) do -- Check ping every 5 seconds
+            local ping = getPing()
+            if ping > pingThreshold then
+                isPingHigh = true
+            else
+                isPingHigh = false
+            end
         end
-        if HMND then
-            local success, result = pcall(function()
-                return HMND:LoadAnimation(CamoAnim)
+    end)
+
+    --======================= SHADOW MODE (Reworked Invisibility) =========================--
+
+    local Shadow_Active = false -- Nowa zmienna statusu
+    local Shadow_Usable = true -- Nowa zmienna zgodności
+
+    do -- Nowy 'do' block
+        repeat task.wait() until game:IsLoaded();
+
+        local svc_ref = cloneref or function(...) return ... end;
+
+        local GS = setmetatable({}, {
+            __index = function(_, k)
+                return svc_ref(game:GetService(k));
+            end
+        });
+
+        local P = GS.Players.LocalPlayer;
+        local Char = P.Character or P.CharacterAdded:Wait();
+        local HMND = nil
+        local HRP = nil
+
+        local function RefreshCharRefs()
+            Char = P.Character
+            if Char then
+                HRP = Char:FindFirstChild("HumanoidRootPart")
+                HMND = Char:FindFirstChildOfClass("Humanoid")
+            else
+                HRP = nil
+                HMND = nil
+            end
+        end
+
+        RefreshCharRefs() -- Initial call
+
+        local AnimTrack_Cache = nil
+        local CamoAnim = Instance.new("Animation");
+        CamoAnim.AnimationId = "rbxassetid://215384594";
+
+        local RS = GS.RunService;
+        local UpdateFrame = RS.Heartbeat;
+        local WaitRender = RS.RenderStepped;
+
+        local CoreGS = GS.CoreGui;
+        local StartGS = GS.StarterGui;
+
+        -- GUI for warning message (uses original names for clarity on screen)
+        local HUD = Instance.new("ScreenGui");
+        HUD.Name = "ShadowWarningHUD";
+        HUD.Parent = CoreGS;
+        HUD.ResetOnSpawn = false;
+        HUD.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
+
+        local WarningText = Instance.new("TextLabel", HUD);
+        WarningText.Text = "⚠️You are visible⚠️";
+        WarningText.Visible = false;
+        WarningText.Size = UDim2.new(0, 200, 0, 30);
+        WarningText.Position = UDim2.new(0.5, -100, 0.85, 0);
+        WarningText.BackgroundTransparency = 1;
+        WarningText.Font = Enum.Font.GothamSemibold;
+        WarningText.TextSize = 24;
+        WarningText.TextColor3 = Color3.fromRGB(255, 255, 0);
+        WarningText.TextStrokeTransparency = 0.5;
+        WarningText.ZIndex = 10;
+
+        -- Check R6 requirement
+        if Char and not Char:FindFirstChild("Torso") then
+            pcall(function()
+                StartGS:SetCore("SendNotification", {
+                    Title = "Shadow Mode FAILED",
+                    Text = "Feature requires R6 Avatar.",
+                    Duration = 5,
+                });
             end)
-            if success then
-                AnimTrack_Cache = result
-                AnimTrack_Cache.Priority = Enum.AnimationPriority.Action4;
+            Shadow_Usable = false
+        end
+
+        local function CheckGrounded()
+            return HMND and HMND:IsDescendantOf(workspace) and HMND.FloorMaterial ~= Enum.Material.Air;
+        end
+
+        local function CacheAnimTrack()
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            if HMND then
+                local success, result = pcall(function()
+                    return HMND:LoadAnimation(CamoAnim)
+                end)
+                if success then
+                    AnimTrack_Cache = result
+                    AnimTrack_Cache.Priority = Enum.AnimationPriority.Action4;
+                else
+                    AnimTrack_Cache = nil
+                end
             else
                 AnimTrack_Cache = nil
             end
-        else
-            AnimTrack_Cache = nil
-        end
-    end
-
-    -- Nowa nazwa: DeactivateShadow
-    local function DeactivateShadow()
-        if not Shadow_Active then return end
-        Shadow_Active = false;
-
-        if AnimTrack_Cache then
-            pcall(function() AnimTrack_Cache:Stop() end)
         end
 
-        if HMND then
-            workspace.CurrentCamera.CameraSubject = HMND;
-        end
+        -- Nowa nazwa: DeactivateShadow
+        local function DeactivateShadow()
+            if not Shadow_Active then return end
+            Shadow_Active = false;
 
-        if Char then
-            for _, v in pairs(Char:GetDescendants()) do
-                if v:IsA("BasePart") and v.Transparency == 0.5 then
-                    v.Transparency = 0;
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            if HMND then
+                workspace.CurrentCamera.CameraSubject = HMND;
+            end
+
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Transparency == 0.5 then
+                        v.Transparency = 0;
+                    end
                 end
             end
-        end
-        
-        WarningText.Visible = false;
-    end
-
-    -- Nowa nazwa: ActivateShadow
-    local function ActivateShadow()
-        if Shadow_Active or not Shadow_Usable then return end
-
-        RefreshCharRefs()
-        if not Char or not HMND or not HRP then
-            return
-        end
-        if not Char:FindFirstChild("Torso") then
-            pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode FAILED", Text = "Feature requires R6 Avatar.", Duration = 5}) end)
-            return
-        end
-
-        Shadow_Active = true;
-        workspace.CurrentCamera.CameraSubject = HRP;
-
-        CacheAnimTrack()
-    end
-
-    -- Zmiana użycia pętli Heartbeat na inną funkcję zamykającą
-    local function ShadowStep(deltaTime)
-        -- Check character validity *inside* the loop - CRITICAL for reset safety
-        if not Char or not HMND or not HRP or not HMND:IsDescendantOf(workspace) or HMND.Health <= 0 then
+            
             WarningText.Visible = false;
-            return
         end
 
-        WarningText.Visible = not CheckGrounded();
+        -- Nowa nazwa: ActivateShadow
+        local function ActivateShadow()
+            if Shadow_Active or not Shadow_Usable then return end
 
-        -- Manual movement update
-        local walk_speed = 12
-        if HMND.MoveDirection.Magnitude > 0 then
-            local velocity_offset = HMND.MoveDirection * walk_speed * deltaTime
-            HRP.CFrame = HRP.CFrame + velocity_offset
-        end
-
-        local InitialCFrame = HRP.CFrame;
-        local InitialCamOffset = HMND.CameraOffset;
-
-        -- Apply pose transformations
-        local _, yaw_angle = workspace.CurrentCamera.CFrame:ToOrientation();
-        HRP.CFrame = CFrame.new(HRP.CFrame.Position) * CFrame.fromOrientation(0, yaw_angle, 0);
-        HRP.CFrame = HRP.CFrame * CFrame.Angles(math.rad(90), 0, 0);
-        HMND.CameraOffset = Vector3.new(0, 1.44, 0);
-
-        -- Animation logic
-        if AnimTrack_Cache then
-            local successPlay = pcall(function()
-                if not AnimTrack_Cache.IsPlaying then
-                    AnimTrack_Cache:Play();
-                end
-                AnimTrack_Cache:AdjustSpeed(0);
-                AnimTrack_Cache.TimePosition = 0.3;
-            end)
-            if not successPlay then
-                CacheAnimTrack()
+            RefreshCharRefs()
+            if not Char or not HMND or not HRP then
+                return
             end
-        elseif HMND and HMND.Health > 0 then
+            if not Char:FindFirstChild("Torso") then
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode FAILED", Text = "Feature requires R6 Avatar.", Duration = 5}) end)
+                return
+            end
+
+            Shadow_Active = true;
+            workspace.CurrentCamera.CameraSubject = HRP;
+
             CacheAnimTrack()
         end
 
-        -- Wait for render frame
-        WaitRender:Wait();
-
-        -- Revert transformations
-        if HMND and HMND:IsDescendantOf(workspace) then
-            HMND.CameraOffset = InitialCamOffset;
-        end
-        if HRP and HRP:IsDescendantOf(workspace) then
-            HRP.CFrame = InitialCFrame;
-        end
-
-        -- Stop animation track
-        if AnimTrack_Cache then
-            pcall(function() AnimTrack_Cache:Stop() end)
-        end
-
-        -- Re-orient character to camera
-        if HRP and HRP:IsDescendantOf(workspace) then
-            local LookVec = workspace.CurrentCamera.CFrame.LookVector;
-            local FlatLook = Vector3.new(LookVec.X, 0, LookVec.Z).Unit;
-            if FlatLook.Magnitude > 0.1 then
-                local FinalCFrame = CFrame.new(HRP.Position, HRP.Position + FlatLook);
-                HRP.CFrame = FinalCFrame;
-            end
-        end
-
-        -- Apply transparency
-        if Char then
-            for _, v in pairs(Char:GetDescendants()) do
-                if (v:IsA("BasePart") and v.Transparency ~= 1) then
-                    v.Transparency = 0.5;
-                end
-            end
-        end
-    end
-
-    -- Zmieniona pętla główna (Reworked Main Loop)
-    UpdateFrame:Connect(function(deltaTime)
-        if not Shadow_Active or not Shadow_Usable then
-            -- Reset logic when disabled
-            if not Shadow_Active and Char then
-                for _, v in pairs(Char:GetDescendants()) do
-                    if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
-                end
-            end
-            WarningText.Visible = false
-            return;
-        end
-        
-        ShadowStep(deltaTime)
-    end)
-
-    -- Handle character changes
-    P.CharacterAdded:Connect(function(NewCharacter)
-        -- Reset state immediately
-        if Shadow_Active then DeactivateShadow() end
-
-        if AnimTrack_Cache then
-            pcall(function() AnimTrack_Cache:Stop() end)
-            AnimTrack_Cache = nil
-        end
-
-        task.wait()
-
-        RefreshCharRefs()
-
-        if not HMND then
-            task.wait(0.5)
-            RefreshCharRefs()
-            if not HMND then
-                Shadow_Usable = false
-                if Shadow_Active then DeactivateShadow() end
-                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Error", Text = "Could not verify character type.", Duration = 5}) end)
+        -- Zmiana użycia pętli Heartbeat na inną funkcję zamykającą
+        local function ShadowStep(deltaTime)
+            -- Check character validity *inside* the loop - CRITICAL for reset safety
+            if not Char or not HMND or not HRP or not HMND:IsDescendantOf(workspace) or HMND.Health <= 0 then
+                WarningText.Visible = false;
                 return
             end
+
+            WarningText.Visible = not CheckGrounded();
+
+            -- Manual movement update
+            local walk_speed = 12
+            if HMND.MoveDirection.Magnitude > 0 then
+                local velocity_offset = HMND.MoveDirection * walk_speed * deltaTime
+                HRP.CFrame = HRP.CFrame + velocity_offset
+            end
+
+            local InitialCFrame = HRP.CFrame;
+            local InitialCamOffset = HMND.CameraOffset;
+
+            -- Apply pose transformations
+            local _, yaw_angle = workspace.CurrentCamera.CFrame:ToOrientation();
+            HRP.CFrame = CFrame.new(HRP.CFrame.Position) * CFrame.fromOrientation(0, yaw_angle, 0);
+            HRP.CFrame = HRP.CFrame * CFrame.Angles(math.rad(90), 0, 0);
+            HMND.CameraOffset = Vector3.new(0, 1.44, 0);
+
+            -- Animation logic
+            if AnimTrack_Cache then
+                local successPlay = pcall(function()
+                    if not AnimTrack_Cache.IsPlaying then
+                        AnimTrack_Cache:Play();
+                    end
+                    AnimTrack_Cache:AdjustSpeed(0);
+                    AnimTrack_Cache.TimePosition = 0.3;
+                end)
+                if not successPlay then
+                    CacheAnimTrack()
+                end
+            elseif HMND and HMND.Health > 0 then
+                CacheAnimTrack()
+            end
+
+            -- Wait for render frame
+            WaitRender:Wait();
+
+            -- Revert transformations
+            if HMND and HMND:IsDescendantOf(workspace) then
+                HMND.CameraOffset = InitialCamOffset;
+            end
+            if HRP and HRP:IsDescendantOf(workspace) then
+                HRP.CFrame = InitialCFrame;
+            end
+
+            -- Stop animation track
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+            end
+
+            -- Re-orient character to camera
+            if HRP and HRP:IsDescendantOf(workspace) then
+                local LookVec = workspace.CurrentCamera.CFrame.LookVector;
+                local FlatLook = Vector3.new(LookVec.X, 0, LookVec.Z).Unit;
+                if FlatLook.Magnitude > 0.1 then
+                    local FinalCFrame = CFrame.new(HRP.Position, HRP.Position + FlatLook);
+                    HRP.CFrame = FinalCFrame;
+                end
+            end
+
+            -- Apply transparency
+            if Char then
+                for _, v in pairs(Char:GetDescendants()) do
+                    if (v:IsA("BasePart") and v.Transparency ~= 1) then
+                        v.Transparency = 0.5;
+                    end
+                end
+            end
         end
 
-        if HMND.RigType ~= Enum.HumanoidRigType.R6 then
-            Shadow_Usable = false
+        -- Zmieniona pętla główna (Reworked Main Loop)
+        UpdateFrame:Connect(function(deltaTime)
+            if not Shadow_Active or not Shadow_Usable then
+                -- Reset logic when disabled
+                if not Shadow_Active and Char then
+                    for _, v in pairs(Char:GetDescendants()) do
+                        if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
+                    end
+                end
+                WarningText.Visible = false
+                return;
+            end
+            
+            ShadowStep(deltaTime)
+        end)
+
+        -- Handle character changes
+        P.CharacterAdded:Connect(function(NewCharacter)
+            -- Reset state immediately
             if Shadow_Active then DeactivateShadow() end
-            pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Warning", Text = "Non-R6 Avatar detected (".. tostring(HMND.RigType) .."). Disabled.", Duration = 5}) end)
+
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+
+            task.wait()
+
+            RefreshCharRefs()
+
+            if not HMND then
+                task.wait(0.5)
+                RefreshCharRefs()
+                if not HMND then
+                    Shadow_Usable = false
+                    if Shadow_Active then DeactivateShadow() end
+                    pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Error", Text = "Could not verify character type.", Duration = 5}) end)
+                    return
+                end
+            end
+
+            if HMND.RigType ~= Enum.HumanoidRigType.R6 then
+                Shadow_Usable = false
+                if Shadow_Active then DeactivateShadow() end
+                pcall(function() StartGS:SetCore("SendNotification", {Title = "Shadow Mode Warning", Text = "Non-R6 Avatar detected (".. tostring(HMND.RigType) .."). Disabled.", Duration = 5}) end)
+                return
+            else
+                Shadow_Usable = true
+            end
+        end)
+
+        P.CharacterRemoving:Connect(function(OldCharacter)
+            if AnimTrack_Cache then
+                pcall(function() AnimTrack_Cache:Stop() end)
+                AnimTrack_Cache = nil
+            end
+            WarningText.Visible = false
+        end)
+
+        -- Expose new global functions
+        _G.IsShadowActive = function() return Shadow_Active end
+        _G.ActivateShadow = ActivateShadow
+        _G.DeactivateShadow = DeactivateShadow
+
+    end -- End of Shadow Mode 'do' block
+
+    -- Bread Collector (Auto Pickup Money)
+    local Collector_Enabled = false
+    local Collector_Signal = nil
+
+    local function Collector_CoreLogic()
+        local RS_S = RunService
+        local RS_Rep = game:GetService("ReplicatedStorage")
+        local WS = game:GetService("Workspace")
+
+        local function RunCollectorLogic()
+            if not Collector_Enabled or Settings.IsDead then return end
+
+            local breadContainer = WS.Filter:FindFirstChild("SpawnedBread")
+            local pickupRemote = RS_Rep.Events:FindFirstChild("CZDPZUS")
+
+            if not breadContainer then
+                warn("BreadCollector: SpawnedBread folder missing. Pausing pickup logic.")
+                return
+            end
+            if not pickupRemote then
+                warn("BreadCollector: Pickup RemoteEvent missing. Pausing pickup logic.")
+                return
+            end
+
+            local p_char = localPlayer.Character
+            local root_part = p_char and p_char:FindFirstChild("HumanoidRootPart")
+
+            if not root_part or CoolDowns.AutoPickUps.MoneyCooldown then return end
+
+            local current_pos = root_part.Position
+            for _, item in ipairs(breadContainer:GetChildren()) do
+                local dist_sq = (current_pos - item.Position).Magnitude^2
+                if dist_sq < 400 and not CoolDowns.AutoPickUps.MoneyCooldown then
+                    CoolDowns.AutoPickUps.MoneyCooldown = true
+                    
+                    pcall(function()
+                        pickupRemote:FireServer(item)
+                    end)
+                    
+                    task.wait(1.1)
+                    
+                    CoolDowns.AutoPickUps.MoneyCooldown = false
+                    break
+                end
+            end
+        end
+
+        Collector_Signal = RS_S.RenderStepped:Connect(RunCollectorLogic)
+    end
+
+    local function Collector_Activate()
+        if Collector_Enabled then return end
+        Collector_Enabled = true
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        Collector_CoreLogic()
+    end
+
+    local function Collector_Deactivate()
+        if not Collector_Enabled then return end
+        Collector_Enabled = false
+
+        if Collector_Signal then
+            Collector_Signal:Disconnect()
+            Collector_Signal = nil
+        end
+
+        if CoolDowns and CoolDowns.AutoPickUps then
+            CoolDowns.AutoPickUps.MoneyCooldown = false
+        end
+    end
+
+    -- Main function to enable the autofarm and invisibility
+    local function Autofarm_Enable()
+        if autofarmEnabled then return end
+        autofarmEnabled = true
+        
+        _G.ActivateShadow() -- Shadow Mode (Invisibility)
+        Collector_Activate() -- Bread Collector (Auto Pickup Money)
+        -- Noclip_Enable() -- Si tenés Noclip, descomentá y ajustá
+        
+        Fluent:Notify({Title = "AutoFarm", Content = "Enabled", Duration = 2})
+    end
+
+    -- Main function to disable the autofarm and invisibility
+    local function Autofarm_Disable()
+        if not autofarmEnabled then return end
+        autofarmEnabled = false
+        
+        _G.DeactivateShadow()
+        Collector_Deactivate()
+        -- Noclip_Disable() -- Si tenés Noclip, descomentá y ajustá
+        
+        Fluent:Notify({Title = "AutoFarm", Content = "Disabled", Duration = 2})
+    end
+
+    -- NOWA, WZMOCNIONA LOGIKA RESPONSU
+    task.spawn(function()
+        local deathRespawnEvent = services.rs_rep:WaitForChild("Events"):WaitForChild("DeathRespawn")
+        while task.wait() do
+            local char = localPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health <= 0 and autofarmEnabled then
+                    deathRespawnEvent:InvokeServer("KMG4R904")
+                    task.wait(2) -- Dłuższe oczekiwanie na pełny respawn
+                end
+            end
+        end
+    end)
+
+    -- Handle character respawn and script resume
+    localPlayer.CharacterAdded:Connect(function(character)
+        if not autofarmEnabled then
             return
-        else
-            Shadow_Usable = true
         end
+
+        -- Dłuższe oczekiwanie na pełne załadowanie postaci i elementów gry
+        character:WaitForChild("HumanoidRootPart", 5)
+        task.wait(1.5)
+
+        -- TWARDY RESET STANU LOKALNEGO
+        autofarmCooldown = false
+        ignoredSafes = {}
+        
+        -- Wymuś ponowną aktywację, aby zsynchronizować stan ze skryptami
+        Autofarm_Enable()
     end)
 
-    P.CharacterRemoving:Connect(function(OldCharacter)
-        if AnimTrack_Cache then
-            pcall(function() AnimTrack_Cache:Stop() end)
-            AnimTrack_Cache = nil
+    -- =================================================================================
+    -- --- BARDZIEJ NIEZAWODNA FUNKCJA TELEPORTACJI ---
+    -- =================================================================================
+    local function teleportTo(targetPart)
+        local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart", 10)
+        if not hrp then
+            return false
         end
-        WarningText.Visible = false
-    end)
 
-    -- Expose new global functions
-    _G.IsShadowActive = function() return Shadow_Active end
-    --_G.ActivateShadow = ActivateShadow
-    --_G.DeactivateShadow = DeactivateShadow
+        if not (targetPart and targetPart:IsA("BasePart")) then
+            return false
+        end
 
-end -- End of Shadow Mode 'do' block
+        local success = false
+        local attempts = 0
+        while not success and attempts < 4 do -- Mniej prób, ale każda jest dokładniejsza
+            local targetCframe = targetPart.CFrame
+            local targetPos = (targetCframe + targetCframe.LookVector * 2).Position
 
----
+            hrp.CFrame = CFrame.new(targetPos) * CFrame.Angles(0, math.pi / 2, 0)
+            wait(0.5) -- Krótki wait na "przyjęcie" CFrame przez serwer
 
--------------------------------------------------------------------------------
--- Block for: Bread Collector (Reworked Auto Pickup Money)
--------------------------------------------------------------------------------
+            -- Nowa, ulepszona logika weryfikacji pozycji
+            local isStable = true
+            local stabilityChecks = 10 -- Ile razy sprawdzić pozycję
+            local checkInterval = 0.2 -- Co ile sekund
 
-local Collector_Enabled = false
-local Collector_Signal = nil
-local Collector_Task = nil
+            -- Aktywnie sprawdzamy stabilność pozycji przez 2 sekundy (10 * 0.2)
+            for i = 1, stabilityChecks do
+                wait(checkInterval)
+                if not hrp or not hrp.Parent then -- Sprawdzenie czy postać wciąż istnieje
+                    isStable = false
+                    break
+                end
+                
+                local currentDistance = (hrp.Position - targetPos).Magnitude
+                if currentDistance > 5 then -- Jeśli gracz został odrzucony/przesunięty
+                    isStable = false
+                    break -- Przerwij sprawdzanie, teleportacja nieudana
+                end
+            end
 
-local function Collector_CoreLogic()
-	local RS_S = game:GetService("RunService")
-	local RS_Rep = game:GetService("ReplicatedStorage")
-	local WS = game:GetService("Workspace")
+            if isStable then
+                success = true
+            else
+                attempts = attempts + 1
+                wait(1) -- Odczekaj chwilę przed kolejną próbą
+            end
+        end
 
-	local function RunCollectorLogic()
-		if not Collector_Enabled or Settings.IsDead then return end
-
-		local breadContainer = WS.Filter:FindFirstChild("SpawnedBread")
-		local pickupRemote = RS_Rep.Events:FindFirstChild("CZDPZUS")
-
-		if not breadContainer then
-			warn("BreadCollector: SpawnedBread folder missing. Pausing pickup logic.")
-			return
-		end
-		if not pickupRemote then
-			warn("BreadCollector: Pickup RemoteEvent missing. Pausing pickup logic.")
-			return
-		end
-
-		local p_char = localPlayer.Character
-		local root_part = p_char and p_char:FindFirstChild("HumanoidRootPart")
-
-		if not root_part or CoolDowns.AutoPickUps.MoneyCooldown then return end
-
-		local current_pos = root_part.Position
-		for _, item in ipairs(breadContainer:GetChildren()) do
-			local dist_sq = (current_pos - item.Position).Magnitude^2
-			if dist_sq < 400 and not CoolDowns.AutoPickUps.MoneyCooldown then
-				CoolDowns.AutoPickUps.MoneyCooldown = true
-				
-				pcall(function()
-					pickupRemote:FireServer(item)
-				end)
-				
-				task.wait(1.1)
-				
-				CoolDowns.AutoPickUps.MoneyCooldown = false
-				break
-			end
-		end
-	end
-
-	Collector_Signal = RS_S.RenderStepped:Connect(RunCollectorLogic)
-end
-
-local function Collector_Activate()
-	if Collector_Enabled then return end
-	Collector_Enabled = true
-
-	if Collector_Signal then
-		Collector_Signal:Disconnect()
-		Collector_Signal = nil
-	end
-	if Collector_Task then
-		coroutine.close(Collector_Task)
-		Collector_Task = nil
-	end
-
-	Collector_CoreLogic()
-end
-
-local function Collector_Deactivate()
-	if not Collector_Enabled then return end
-	Collector_Enabled = false
-
-	if Collector_Signal then
-		Collector_Signal:Disconnect()
-		Collector_Signal = nil
-	end
-
-	if CoolDowns and CoolDowns.AutoPickUps then
-		CoolDowns.AutoPickUps.MoneyCooldown = false
-	end
-end
-
--- Main function to enable the autofarm and invisibility
-local function Autofarm_Enable()
-	if autofarmEnabled then return end
-	autofarmEnabled = true
-	
-	--_G.ActivateShadow() -- Użycie nowej nazwy
-	Collector_Activate() -- Użycie nowej nazwy
-	--Noclip_Enable() -- Włącz Noclip
-end
-
--- Main function to disable the autofarm and invisibility
-local function Autofarm_Disable()
-	if not autofarmEnabled then return end
-	autofarmEnabled = false
-	
-	_G.DeactivateShadow() -- Użycie nowej nazwy
-	Collector_Deactivate() -- Użycie nowej nazwy
-	--Noclip_Disable() -- Wyłącz Noclip
-end
-
--- NOWA, WZMOCNIONA LOGIKA RESPONSU
-task.spawn(function()
-	local deathRespawnEvent = services.rs_rep:WaitForChild("Events"):WaitForChild("DeathRespawn")
-	while task.wait() do
-		local char = localPlayer.Character
-		if char then
-			local humanoid = char:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.Health <= 0 and autofarmEnabled then
-				deathRespawnEvent:InvokeServer("KMG4R904")
-				task.wait(2) -- Dłuższe oczekiwanie na pełny respawn
-			end
-		end
-	end
-end)
+        return success
+    end
 
 
--- Handle character respawn and script resume
-localPlayer.CharacterAdded:Connect(function(character)
-	if not autofarmEnabled then
-		return
-	end
+    -- Function to check if the player has a tool (crowbar)
+    local function hasTool(toolName)
+        local backpackTool = localPlayer.Backpack:FindFirstChild(toolName)
+        local characterTool = localPlayer.Character and localPlayer.Character:FindFirstChild(toolName)
+        return backpackTool or characterTool
+    end
 
-	-- Dłuższe oczekiwanie na pełne załadowanie postaci i elementów gry
-	character:WaitForChild("HumanoidRootPart", 5)
-	task.wait(1.5)
-
-	-- TWARDY RESET STANU LOKALNEGO
-	autofarmCooldown = false
-	ignoredSafes = {}
-	
-	-- Wymuś ponowną aktywację, aby zsynchronizować stan ze skryptami
-	Autofarm_Enable()
-end)
-
-
--- =================================================================================
--- --- BARDZIEJ NIEZAWODNA FUNKCJA TELEPORTACJI ---
--- =================================================================================
-local function teleportTo(targetPart)
-	local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-	local hrp = char:WaitForChild("HumanoidRootPart", 10)
-	if not hrp then
-		return false
-	end
-
-	if not (targetPart and targetPart:IsA("BasePart")) then
-		return false
-	end
-
-	local success = false
-	local attempts = 0
-	while not success and attempts < 4 do -- Mniej prób, ale każda jest dokładniejsza
-		local targetCframe = targetPart.CFrame
-		local targetPos = (targetCframe + targetCframe.LookVector * 2).Position
-
-		hrp.CFrame = CFrame.new(targetPos) * CFrame.Angles(0, math.pi / 2, 0)
-		wait(0.5) -- Krótki wait na "przyjęcie" CFrame przez serwer
-
-		-- Nowa, ulepszona logika weryfikacji pozycji
-		local isStable = true
-		local stabilityChecks = 10 -- Ile razy sprawdzić pozycję
-		local checkInterval = 0.2 -- Co ile sekund
-
-		-- Aktywnie sprawdzamy stabilność pozycji przez 2 sekundy (10 * 0.2)
-		for i = 1, stabilityChecks do
-			wait(checkInterval)
-			if not hrp or not hrp.Parent then -- Sprawdzenie czy postać wciąż istnieje
-				isStable = false
-				break
-			end
-			
-			local currentDistance = (hrp.Position - targetPos).Magnitude
-			if currentDistance > 5 then -- Jeśli gracz został odrzucony/przesunięty
-				isStable = false
-				break -- Przerwij sprawdzanie, teleportacja nieudana
-			end
-		end
-
-		if isStable then
-			success = true
-		else
-			attempts = attempts + 1
-			wait(1) -- Odczekaj chwilę przed kolejną próbą
-		end
-	end
-
-	return success
-end
-
-
--- Function to check if the player has a tool (crowbar)
-local function hasTool(toolName)
-	local backpackTool = localPlayer.Backpack:FindFirstChild(toolName)
-	local characterTool = localPlayer.Character and localPlayer.Character:FindFirstChild(toolName)
-	return backpackTool or characterTool
-end
-
--- Function to find the nearest working target
-local function findNearestTarget(targetsToIgnore)
-	local bredMakurzFolder = services.ws.Map:FindFirstChild("BredMakurz") or services.ws.Filter:FindFirstChild("BredMakurz")
-	local char = localPlayer.Character
-
-	if not bredMakurzFolder then
-		warn("DIAGNOSTYKA: Nie znaleziono folderu 'BredMakurz' w Map ani Filter.")
-		return nil
-	end
-	if not char then return nil end
-
-	local nearestTarget = nil
-	local shortestDistance = math.huge
-	local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
-
-	for _, v in ipairs(bredMakurzFolder:GetChildren()) do
-		if (string.find(v.Name, "Safe") or string.find(v.Name, "Register")) and not table.find(targetsToIgnore, v) then
-			local values = v:FindFirstChild("Values")
-			if values then
-				local broken = values:FindFirstChild("Broken")
-				if broken and broken:IsA("BoolValue") and not broken.Value then
-					local targetPart = v.PrimaryPart or v:FindFirstChild("MainPart") or v:FindFirstChild("PosPart")
-					if targetPart then
-						local distance = (targetPart.Position - playerPosition).Magnitude
-						if distance < shortestDistance then
-							shortestDistance = distance
-							nearestTarget = v
-						end
-					end
-				end
-			end
-		end
-	end
-	return nearestTarget
-end
-
--- Function to find the nearest crowbar dealer
-local function findNearestDealer()
-	local shopz = services.ws.Map:FindFirstChild("Shopz")
-	local char = localPlayer.Character
-
-	if not shopz or not char then return nil end
-
-	local nearestDealer = nil
-	local shortestDistance = math.huge
-	local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
-
-	for _, dealer in ipairs(shopz:GetChildren()) do
-		local crowbarStock = dealer:FindFirstChild("CurrentStocks") and dealer.CurrentStocks:FindFirstChild("Crowbar")
-		if crowbarStock and crowbarStock.Value > 0 and dealer:FindFirstChild("MainPart") then
-			local distance = (dealer.MainPart.Position - playerPosition).Magnitude
-			if distance < shortestDistance then
-				shortestDistance = distance
-				nearestDealer = dealer
-			end
-		end
-	end
-	return nearestDealer
-end
-
--- Function to open a safe with simulated hits + SIMULA D A D A PARA RECOGER DINERO
-local function openSafe(safeModel)
-    local equippedCrowbar = hasTool("Crowbar")
-    if not equippedCrowbar then return end
-
-    local remoteXMHH = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH.2")
-    local remoteXMHH2 = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH2.2")
-    local safeMainPart = safeModel:WaitForChild("MainPart", 5)
-    if not safeMainPart then return end
-
-    local startTime = tick()
-    while safeModel and safeModel.Parent and safeModel.Values and safeModel.Values.Broken and not safeModel.Values.Broken.Value and (tick() - startTime < 15) do
+    -- Function to find the nearest working target
+    local function findNearestTarget(targetsToIgnore)
+        local bredMakurzFolder = services.ws.Map:FindFirstChild("BredMakurz") or services.ws.Filter:FindFirstChild("BredMakurz")
         local char = localPlayer.Character
-        if not char then break end
 
-        local safeOpenValue = remoteXMHH:InvokeServer("\240\159\141\158", tick(), equippedCrowbar, "DZDRRRKI", safeModel, "Register")
-        if safeOpenValue == nil then task.wait(1) continue end
+        if not bredMakurzFolder then
+            warn("DIAGNOSTYKA: Nie znaleziono folderu 'BredMakurz' w Map ani Filter.")
+            return nil
+        end
+        if not char then return nil end
 
-        local currentTime = tick()
-        remoteXMHH2:FireServer("\240\159\141\158", currentTime, equippedCrowbar, "2389ZFX34", safeOpenValue, false,
-            char["Right Arm"], safeMainPart, safeModel, safeMainPart.Position, safeMainPart.Position)
-        task.wait(0.2)
+        local nearestTarget = nil
+        local shortestDistance = math.huge
+        local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
+
+        for _, v in ipairs(bredMakurzFolder:GetChildren()) do
+            if (string.find(v.Name, "Safe") or string.find(v.Name, "Register")) and not table.find(targetsToIgnore, v) then
+                local values = v:FindFirstChild("Values")
+                if values then
+                    local broken = values:FindFirstChild("Broken")
+                    if broken and broken:IsA("BoolValue") and not broken.Value then
+                        local targetPart = v.PrimaryPart or v:FindFirstChild("MainPart") or v:FindFirstChild("PosPart")
+                        if targetPart then
+                            local distance = (targetPart.Position - playerPosition).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                nearestTarget = v
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return nearestTarget
     end
 
-    -- === SIMULA APRETAR D A D A ===
-    local virtualInput = game:GetService("VirtualInputManager")
-    local keysSequence = {Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.S, Enum.KeyCode.S,}
+    -- Function to find the nearest crowbar dealer
+    local function findNearestDealer()
+        local shopz = services.ws.Map:FindFirstChild("Shopz")
+        local char = localPlayer.Character
 
-    for _, key in ipairs(keysSequence) do
-        virtualInput:SendKeyEvent(true, key, false, game)  -- Apreta
-        task.wait(0.1)
-        virtualInput:SendKeyEvent(false, key, false, game) -- Suelta
-        task.wait(0.15)
+        if not shopz or not char then return nil end
+
+        local nearestDealer = nil
+        local shortestDistance = math.huge
+        local playerPosition = char:FindFirstChild("HumanoidRootPart").Position
+
+        for _, dealer in ipairs(shopz:GetChildren()) do
+            local crowbarStock = dealer:FindFirstChild("CurrentStocks") and dealer.CurrentStocks:FindFirstChild("Crowbar")
+            if crowbarStock and crowbarStock.Value > 0 and dealer:FindFirstChild("MainPart") then
+                local distance = (dealer.MainPart.Position - playerPosition).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestDealer = dealer
+                end
+            end
+        end
+        return nearestDealer
     end
 
-    task.wait(8) -- Tiempo para siguiente safe
-end
+    -- Function to open a safe with simulated hits + SIMULA D A D A PARA RECOGER DINERO
+    local function openSafe(safeModel)
+        local equippedCrowbar = hasTool("Crowbar")
+        if not equippedCrowbar then return end
 
+        local remoteXMHH = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH.2")
+        local remoteXMHH2 = services.rs_rep:WaitForChild("Events"):WaitForChild("XMHH2.2")
+        local safeMainPart = safeModel:WaitForChild("MainPart", 5)
+        if not safeMainPart then return end
 
--- =================================================================================
--- --- GŁÓWNA LOGIKA AUTOMATYZACJI (WERSJA Z INTELIGENTNYM CZEKANIEM) ---
--- =================================================================================
-local noTargetCounter = 0 -- Licznik nieudanych prób znalezienia celu
+        local startTime = tick()
+        while safeModel and safeModel.Parent and safeModel.Values and safeModel.Values.Broken and not safeModel.Values.Broken.Value and (tick() - startTime < 15) do
+            local char = localPlayer.Character
+            if not char then break end
 
-task.spawn(function()
-	while true do
-		wait(1) -- Podstawowe opóźnienie na początku każdej pętli
-		local char = localPlayer.Character
-		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-		
-		if humanoid then
-			Settings.IsDead = humanoid.Health <= 0
-		end
-		
-		if not autofarmEnabled or autofarmCooldown or not char or not humanoid or humanoid.Health <= 0 or isPingHigh then
-			continue
-		end
-		
-		local crowbar = hasTool("Crowbar")
-		if not crowbar then
-			local dealer = findNearestDealer()
-			if dealer then
-				if teleportTo(dealer:WaitForChild("MainPart")) then
-					wait(1)
-					services.rs_rep.Events.BYZERSPROTEC:FireServer(true, "shop", dealer.MainPart, "IllegalStore")
-					wait(1)
-					local args = {"IllegalStore", "Melees", "Crowbar", dealer.MainPart, nil, true}
-					services.rs_rep.Events.SSHPRMTE1:InvokeServer(unpack(args))
-					wait(20) -- Skrócony czas oczekiwania na finalizację zakupu
-					services.rs_rep.Events.BYZERSPROTEC:FireServer(false)
-				else
-					wait(5)
-				end
-			else
-				wait(10)
-			end
-		else -- Gracz MA łom
-			local target = findNearestTarget(ignoredSafes)
-			if target then
-				noTargetCounter = 0 -- Zresetuj licznik, bo znaleziono cel
-				
-				if teleportTo(target:WaitForChild("MainPart")) then
-					-- Sprawdź, czy narzędzie nie jest już wyposażone
-					if localPlayer.Character:FindFirstChild("Crowbar") == nil then
-						local success, err = pcall(function()
-							localPlayer.Character.Humanoid:EquipTool(crowbar)
-						end)
-						if not success then
-							task.wait(1)
-							pcall(function() localPlayer.Character.Humanoid:EquipTool(crowbar) end)
-						end
-					end
-					
-					wait(1)
-					openSafe(target)
-				else
-					table.insert(ignoredSafes, target)
-					wait(0.5)
-				end
-			else -- Nie znaleziono żadnego celu
-				noTargetCounter = noTargetCounter + 1
-				
-				-- Inteligentna logika czekania
-				if noTargetCounter >= 4 then
-					ignoredSafes = {} -- Wyczyść listę ignorowanych, może coś się odblokuje
-					noTargetCounter = 0 -- Zresetuj licznik
-					wait(15)
-				else
-					wait(5) -- Krótsze oczekiwanie przy standardowym braku celu
-				end
-			end
-		end
-	end
-end)
+            local safeOpenValue = remoteXMHH:InvokeServer("\240\159\141\158", tick(), equippedCrowbar, "DZDRRRKI", safeModel, "Register")
+            if safeOpenValue == nil then task.wait(1) continue end
 
-    -- UI (toggle y keybind sin cambiar nombres ni lógica)
+            local currentTime = tick()
+            remoteXMHH2:FireServer("\240\159\141\158", currentTime, equippedCrowbar, "2389ZFX34", safeOpenValue, false,
+                char["Right Arm"], safeMainPart, safeModel, safeMainPart.Position, safeMainPart.Position)
+            task.wait(0.2)
+        end
+
+        -- === SIMULA APRETAR D A D A ===
+        local virtualInput = game:GetService("VirtualInputManager")
+        local keysSequence = {Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.D, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.A, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.S, Enum.KeyCode.S,}
+
+        for _, key in ipairs(keysSequence) do
+            virtualInput:SendKeyEvent(true, key, false, game)  -- Apreta
+            task.wait(0.1)
+            virtualInput:SendKeyEvent(false, key, false, game) -- Suelta
+            task.wait(0.15)
+        end
+
+        task.wait(8) -- Tiempo para siguiente safe
+    end
+
+    -- =================================================================================
+    -- --- GŁÓWNA LOGIKA AUTOMATYZACJI (WERSJA Z INTELIGENTNYM CZEKANIEM) ---
+    -- =================================================================================
+    local noTargetCounter = 0 -- Licznik nieudanych prób znalezienia celu
+
+    task.spawn(function()
+        while true do
+            wait(1) -- Podstawowe opóźnienie na początku każdej pętli
+            local char = localPlayer.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid then
+                Settings.IsDead = humanoid.Health <= 0
+            end
+            
+            if not autofarmEnabled or autofarmCooldown or not char or not humanoid or humanoid.Health <= 0 or isPingHigh then
+                continue
+            end
+            
+            local crowbar = hasTool("Crowbar")
+            if not crowbar then
+                local dealer = findNearestDealer()
+                if dealer then
+                    if teleportTo(dealer:WaitForChild("MainPart")) then
+                        wait(1)
+                        services.rs_rep.Events.BYZERSPROTEC:FireServer(true, "shop", dealer.MainPart, "IllegalStore")
+                        wait(1)
+                        local args = {"IllegalStore", "Melees", "Crowbar", dealer.MainPart, nil, true}
+                        services.rs_rep.Events.SSHPRMTE1:InvokeServer(unpack(args))
+                        wait(20) -- Skrócony czas oczekiwania na finalizację zakupu
+                        services.rs_rep.Events.BYZERSPROTEC:FireServer(false)
+                    else
+                        wait(5)
+                    end
+                else
+                    wait(10)
+                end
+            else -- Gracz MA łom
+                local target = findNearestTarget(ignoredSafes)
+                if target then
+                    noTargetCounter = 0 -- Zresetuj licznik, bo znaleziono cel
+                    
+                    if teleportTo(target:WaitForChild("MainPart")) then
+                        -- Sprawdź, czy narzędzie nie jest już wyposażone
+                        if localPlayer.Character:FindFirstChild("Crowbar") == nil then
+                            local success, err = pcall(function()
+                                localPlayer.Character.Humanoid:EquipTool(crowbar)
+                            end)
+                            if not success then
+                                task.wait(1)
+                                pcall(function() localPlayer.Character.Humanoid:EquipTool(crowbar) end)
+                            end
+                        end
+                        
+                        wait(1)
+                        openSafe(target)
+                    else
+                        table.insert(ignoredSafes, target)
+                        wait(0.5)
+                    end
+                else -- Nie znaleziono żadnego celu
+                    noTargetCounter = noTargetCounter + 1
+                    
+                    -- Inteligentna logika czekania
+                    if noTargetCounter >= 4 then
+                        ignoredSafes = {} -- Wyczyść listę ignorowanych, może coś się odblokuje
+                        noTargetCounter = 0 -- Zresetuj licznik
+                        wait(15)
+                    else
+                        wait(5) -- Krótsze oczekiwanie przy standardowym braku celu
+                    end
+                end
+            end
+        end
+    end)
+
+    -- Conexión al toggle de la GUI (sin cambiar nada de tu lógica)
     local FarmToggle = Tabs.AutoFarm:AddToggle("FarmEnabled", {
         Title = "AutoFarm",
         Default = false
@@ -2171,7 +2351,7 @@ do
     Tabs.Visuals:AddSlider("MaxESPDistance", {Title = "Max Distance", Default = 1300, Min = 400, Max = 4000, Rounding = 0})
 
     Tabs.Visuals:AddToggle("LowPerfMode", {
-        Title = "Low Perf Mode",
+        Title = "Boxes Low Perf Mode",
         Description = "More FPS (delays the boxes)",
         Default = false
     })
